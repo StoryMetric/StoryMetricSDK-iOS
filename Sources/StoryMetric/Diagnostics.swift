@@ -27,13 +27,12 @@ extension SM {
 }
 
 enum Diag {
-    private static let lock = NSLock()
-    private static var stored: SM.LogLevel = .error
+    private static let state = OSAllocatedUnfairLock(initialState: SM.LogLevel.error)
     private static let logger = Logger(subsystem: "com.storymetric", category: "sdk")
 
     static var level: SM.LogLevel {
-        get { lock.lock(); defer { lock.unlock() }; return stored }
-        set { lock.lock(); stored = newValue; lock.unlock() }
+        get { state.withLock { $0 } }
+        set { state.withLock { $0 = newValue } }
     }
 
     static func error(_ message: @autoclosure () -> String) {

@@ -10,7 +10,7 @@ Add the package in Xcode (**File → Add Package Dependencies…**) or in `Packa
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/andgordio/StoryMetricSDK-iOS.git", from: "0.1.0"),
+    .package(url: "https://github.com/StoryMetric/StoryMetricSDK-iOS.git", from: "0.1.0"),
 ]
 ```
 
