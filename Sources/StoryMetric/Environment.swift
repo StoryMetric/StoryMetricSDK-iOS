@@ -51,9 +51,9 @@ enum Environment {
         }
         var size = 0
         guard sysctlbyname("hw.machine", nil, &size, nil, 0) == 0, size > 0 else { return nil }
-        var machine = [CChar](repeating: 0, count: size)
+        var machine = [UInt8](repeating: 0, count: size)
         guard sysctlbyname("hw.machine", &machine, &size, nil, 0) == 0 else { return nil }
-        let id = String(cString: machine)
+        let id = String(decoding: machine.prefix { $0 != 0 }, as: UTF8.self)
         return id.isEmpty ? nil : id
     }()
 
