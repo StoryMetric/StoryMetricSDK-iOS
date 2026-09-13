@@ -8,25 +8,48 @@ protocol TransportLifecycle: AnyObject, Sendable {
 }
 
 /// Production transport: buffers events and drives the `Uploader`.
+///
+/// Logging is bursty — a screen can emit half a dozen events in the same frame —
+/// so a flush per event would be a POST per event. Appends instead open a short
+/// coalescing window: the burst lands in one request, and a busy app still tops
+/// out at one request per window. `batchThreshold` cuts the window short when
+/// enough events are already waiting, so a sustained stream keeps up rather than
+/// piling into ever-larger batches.
 final class Transport: EventSink, TransportLifecycle, @unchecked Sendable {
     private let buffer: EventBuffer
     let uploader: Uploader
     private let flushInterval: TimeInterval
+    private let coalesceInterval: TimeInterval
+    private let batchThreshold: Int
     private let lock = NSLock()
     private var pump: Task<Void, Never>?
+    private var coalescing: Task<Void, Never>?
+    private var bufferedSinceFlush = 0
     private let writes = DispatchQueue(label: "com.storymetric.buffer", qos: .utility)
 
-    init(buffer: EventBuffer, uploader: Uploader, flushInterval: TimeInterval = 30) {
+    init(
+        buffer: EventBuffer,
+        uploader: Uploader,
+        flushInterval: TimeInterval = 30,
+        coalesceInterval: TimeInterval = 1.5,
+        batchThreshold: Int = 20
+    ) {
         self.buffer = buffer
         self.uploader = uploader
         self.flushInterval = flushInterval
+        self.coalesceInterval = coalesceInterval
+        self.batchThreshold = batchThreshold
     }
 
     func receive(_ envelope: SM.Envelope) {
         let event = BufferedEvent(envelope)
-        writes.async { [buffer, uploader] in
+        writes.async { [self] in
             buffer.append(event)
-            Task { await uploader.flush() }
+            lock.lock()
+            bufferedSinceFlush += 1
+            let full = bufferedSinceFlush >= batchThreshold
+            lock.unlock()
+            if full { flushNow() } else { openCoalescingWindow() }
         }
     }
 
@@ -49,6 +72,31 @@ final class Transport: EventSink, TransportLifecycle, @unchecked Sendable {
     }
 
     func flush() {
+        flushNow()
+    }
+
+    /// Flushes after `coalesceInterval`, unless a window is already open — a
+    /// trailing window rather than a debounce, so a continuous stream of events
+    /// still uploads on time instead of deferring forever.
+    private func openCoalescingWindow() {
+        lock.lock(); defer { lock.unlock() }
+        guard coalescing == nil else { return }
+        let interval = coalesceInterval
+        coalescing = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.flushNow()
+        }
+    }
+
+    private func flushNow() {
+        lock.lock()
+        bufferedSinceFlush = 0
+        coalescing?.cancel()
+        coalescing = nil
+        lock.unlock()
+        // Hop through `writes` so any append already in flight is on the buffer
+        // before the uploader reads it.
         writes.async { [uploader] in
             Task { await uploader.flush() }
         }
@@ -58,10 +106,10 @@ final class Transport: EventSink, TransportLifecycle, @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         guard pump == nil else { return }
         let interval = flushInterval
-        pump = Task { [uploader] in
+        pump = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                await uploader.flush()
+                self?.flushNow()
             }
         }
     }

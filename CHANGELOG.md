@@ -4,6 +4,10 @@ Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](ht
 
 ## Unreleased
 
+### Changed
+
+- Event uploads coalesce. An append no longer POSTs on its own: a burst of logs lands in one request (1.5 s window), and a busy app flushes early once 20 events are waiting. The 30 s pump and the flush on backgrounding are unchanged.
+
 ## 0.1.0
 
 First alpha.
