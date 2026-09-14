@@ -96,9 +96,10 @@ actor Uploader {
                 buffer.remove(ids: events.map(\.eventID))
                 attempt = 0
                 Diag.debug("uploaded \(events.count) event(s)")
+                // The one trigger for a declaration upload: the server told us it
+                // does not recognize the hash this batch carried.
                 if Wire.parseManifestUnknown(resp.body), let manifest {
-                    store.set(nil, forKey: Keys.lastUploadedHash)
-                    _ = await uploadDeclarations(manifest, now: now)
+                    _ = await uploadDeclarations(manifest)
                     self.currentHash = manifest.declarationHash
                 }
                 return .sent(events.count)
@@ -125,20 +126,24 @@ actor Uploader {
 
     // MARK: Declarations
 
-    /// Uploads when the hash changed or the last successful upload is over 7 days old.
-    func uploadDeclarationsIfNeeded(now: Date = Date()) async {
-        guard let manifest else { return }
-        let hash = manifest.declarationHash
-        let last = store.string(forKey: Keys.lastUploadedHash)
-        let lastAt = store.integer(forKey: Keys.lastUploadedAt)
-        let sevenDays = 7 * 24 * 3600
-        let stale = lastAt.map { Int(now.timeIntervalSince1970) - $0 > sevenDays } ?? true
-        if last == hash && !stale { return }
-        _ = await uploadDeclarations(manifest, now: now)
-    }
-
+    /// Declarations upload ONLY when the server reports `manifest_unknown` on an
+    /// events batch (see `flush`). Nothing is uploaded on start, and there is no
+    /// periodic re-upload.
+    ///
+    /// The SDK used to upload on first launch whenever it had no local record, and
+    /// again unconditionally every 7 days. Both were guesses about what the server
+    /// already had, and both were wrong in the expensive direction: shipping the SDK
+    /// into an app with an existing user base made every install upload its manifest
+    /// within hours of the update — thousands of union-merge writes that were no-ops
+    /// after the first — and the 7-day rule repeated a smaller version of that
+    /// forever. The hash already rides on every events batch, so the server can just
+    /// say when it needs one, and the steady state is zero declaration requests.
+    ///
+    /// Local bookkeeping went with it. A record of what this device last uploaded
+    /// only ever approximated what the server knows; the handshake is that answer,
+    /// and a failed upload simply gets asked for again on the next batch.
     @discardableResult
-    private func uploadDeclarations(_ manifest: SM.DeclarationManifest, now: Date) async -> Bool {
+    private func uploadDeclarations(_ manifest: SM.DeclarationManifest) async -> Bool {
         guard let apiKey else { return false }
         do {
             let resp = try await http.send(
@@ -151,8 +156,6 @@ actor Uploader {
                 return false
             }
             Diag.debug("uploaded \(manifest.events.count) declaration(s)")
-            store.set(manifest.declarationHash, forKey: Keys.lastUploadedHash)
-            store.setInteger(Int(now.timeIntervalSince1970), forKey: Keys.lastUploadedAt)
             return true
         } catch {
             return false

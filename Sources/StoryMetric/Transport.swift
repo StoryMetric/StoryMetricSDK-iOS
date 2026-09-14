@@ -56,7 +56,8 @@ final class Transport: EventSink, TransportLifecycle, @unchecked Sendable {
     func start(apiKey: String, installID: String, manifest: SM.DeclarationManifest) {
         Task {
             await uploader.configure(apiKey: apiKey, installID: installID, manifest: manifest)
-            await uploader.uploadDeclarationsIfNeeded()
+            // No declaration upload here: the first events batch carries the hash,
+            // and the server asks for the manifest only if it doesn't know it.
             await uploader.flush()
             await uploader.drainErasure()
         }

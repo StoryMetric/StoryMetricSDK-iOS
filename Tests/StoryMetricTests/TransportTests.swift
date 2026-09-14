@@ -86,4 +86,24 @@ final class TransportTests: XCTestCase {
         XCTAssertEqual(eventRequests(http), 2, "a second burst opens a new window")
         XCTAssertEqual(buffer.count, 0)
     }
+
+    func testStartUploadsNoDeclarations() async throws {
+        // The release-day herd: an SDK added to an app with thousands of existing
+        // installs must not have every one of them upload its manifest on first run.
+        let http = MockHTTPClient(status: 200)
+        let buffer = InMemoryEventBuffer()
+        let uploader = Uploader(
+            buffer: buffer, http: http, store: InMemoryStore(),
+            baseURL: URL(string: "https://x.test")!
+        )
+        let transport = Transport(buffer: buffer, uploader: uploader)
+
+        transport.start(apiKey: "k", installID: "i", manifest: manifest)
+        try await Task.sleep(nanoseconds: 400_000_000)
+
+        XCTAssertTrue(
+            http.requests(matching: "v1/declarations").isEmpty,
+            "nothing is uploaded until the server asks for it"
+        )
+    }
 }

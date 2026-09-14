@@ -7,6 +7,7 @@ Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](ht
 ### Changed
 
 - Event uploads coalesce. An append no longer POSTs on its own: a burst of logs lands in one request (1.5 s window), and a busy app flushes early once 20 events are waiting. The 30 s pump and the flush on backgrounding are unchanged.
+- Declarations upload only when the server asks for them. The manifest hash already rides on every events batch, so the SDK waits for `manifest_unknown` instead of uploading on first launch and again every 7 days. Adding the SDK to an app with an existing user base no longer makes every install upload a manifest in the hours after the update.
 
 ## 0.1.0
 

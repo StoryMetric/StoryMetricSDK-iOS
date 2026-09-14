@@ -14,8 +14,6 @@ enum Keys {
     static let installID = prefix + "installID"
     static let sequence = prefix + "eventSequence"
     static let pendingErasureID = prefix + "pendingErasureInstallID"
-    static let lastUploadedHash = prefix + "lastUploadedHash"
-    static let lastUploadedAt = prefix + "lastUploadedAt"
     static let session = prefix + "session"
 }
 

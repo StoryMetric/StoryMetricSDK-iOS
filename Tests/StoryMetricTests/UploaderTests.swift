@@ -124,50 +124,35 @@ final class UploaderTests: XCTestCase {
         XCTAssertEqual(outcome, .sent(1), "events still accepted")
         XCTAssertEqual(buffer.count, 0)
         XCTAssertEqual(http.requests(matching: "v1/declarations").count, 1, "manifest re-uploaded")
-        XCTAssertEqual(store.string(forKey: Keys.lastUploadedHash), manifest.declarationHash)
+    }
+
+    func testManifestKnownUploadsNothing() async {
+        let buffer = InMemoryEventBuffer()
+        buffer.append(makeBufferedEvent(id: "a"))
+        let http = MockHTTPClient(responder: { url in
+            if url.path.contains("v1/events") {
+                return .success(HTTPResponse(status: 200, body: Data(#"{"manifest_unknown":false}"#.utf8)))
+            }
+            return .success(HTTPResponse(status: 200, body: Data()))
+        })
+        let uploader = makeUploader(http: http, buffer: buffer)
+        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+
+        await uploader.flush()
+
+        XCTAssertTrue(
+            http.requests(matching: "v1/declarations").isEmpty,
+            "the server already has this manifest — the steady state is zero declaration requests"
+        )
     }
 
     // MARK: Declarations
 
-    func testDeclarationsUploadedFirstTime() async {
-        let http = MockHTTPClient(status: 200)
-        let store = InMemoryStore()
-        let uploader = makeUploader(http: http, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
-
-        await uploader.uploadDeclarationsIfNeeded(now: Date(timeIntervalSince1970: 1000))
-
-        XCTAssertEqual(http.requests(matching: "v1/declarations").count, 1)
-        XCTAssertEqual(store.string(forKey: Keys.lastUploadedHash), manifest.declarationHash)
-        XCTAssertEqual(store.integer(forKey: Keys.lastUploadedAt), 1000)
-    }
-
-    func testDeclarationsSkippedWhenUnchangedAndFresh() async {
-        let http = MockHTTPClient(status: 200)
-        let store = InMemoryStore()
-        store.set(manifest.declarationHash, forKey: Keys.lastUploadedHash)
-        store.setInteger(1000, forKey: Keys.lastUploadedAt)
-        let uploader = makeUploader(http: http, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
-
-        await uploader.uploadDeclarationsIfNeeded(now: Date(timeIntervalSince1970: 1000 + 3600))
-
-        XCTAssertTrue(http.requests(matching: "v1/declarations").isEmpty, "unchanged + fresh → skip")
-    }
-
-    func testDeclarationsForcedAfterSevenDays() async {
-        let http = MockHTTPClient(status: 200)
-        let store = InMemoryStore()
-        store.set(manifest.declarationHash, forKey: Keys.lastUploadedHash)
-        store.setInteger(1000, forKey: Keys.lastUploadedAt)
-        let uploader = makeUploader(http: http, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
-
-        let eightDaysLater = Date(timeIntervalSince1970: 1000 + 8 * 24 * 3600)
-        await uploader.uploadDeclarationsIfNeeded(now: eightDaysLater)
-
-        XCTAssertEqual(http.requests(matching: "v1/declarations").count, 1, "re-uploaded after 7d")
-    }
+    // Declarations now upload ONLY on a manifest_unknown handshake — see the tests
+    // above and TransportTests.testStartUploadsNoDeclarations. The upload-on-start,
+    // upload-if-hash-changed and re-upload-every-7-days paths were removed: each
+    // guessed at what the server already had, and on release day into an app with
+    // an existing user base that guess cost one write per install.
 
     // MARK: Erasure
 
