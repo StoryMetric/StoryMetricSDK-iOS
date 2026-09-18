@@ -2,7 +2,7 @@
 
 Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](https://semver.org), except that until `1.0` a minor bump may contain breaking changes.
 
-## Unreleased
+## 0.2.0 — 2026-09-18
 
 ### Changed — breaking
 
