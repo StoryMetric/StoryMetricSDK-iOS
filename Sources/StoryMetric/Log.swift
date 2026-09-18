@@ -1,21 +1,19 @@
 extension SM {
 
-    /// Activates StoryMetric — the consent lever. Nothing is written to disk and
-    /// logging no-ops until this is called.
-    public static func start<Source: SMEventSource>(apiKey: String, events: Source.Type) {
-        Core.shared.start(apiKey: apiKey, events: events.allEvents)
-    }
-
     /// Stops collection and erases the subject, locally and server-side.
     public static func deleteData() {
         Core.shared.deleteData()
     }
 
-    // MARK: SPI for @SMEvents-generated code
+    // MARK: SPI for Studio-generated code
 
     /// Not for direct use — backs the generated `SM.start(apiKey:)`.
-    public static func _start(apiKey: String, events: [Event]) {
-        Core.shared.start(apiKey: apiKey, events: events)
+    ///
+    /// The vocabulary version is the one the generated file was cut from. The SDK
+    /// reports it and holds no opinion about it: what a build knows how to log is
+    /// settled by the file it was compiled with.
+    public static func _start(apiKey: String, vocabularyVersion: Int) {
+        Core.shared.start(apiKey: apiKey, vocabularyVersion: vocabularyVersion)
     }
 
     /// Not for direct use — backs the generated `SM.log.<event>()` methods.

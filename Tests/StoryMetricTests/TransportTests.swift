@@ -4,7 +4,6 @@ import Foundation
 
 final class TransportTests: XCTestCase {
 
-    private let manifest = SM.DeclarationManifest(events: LoggingSampleEvents.allEvents)
 
     private func makeTransport(
         http: MockHTTPClient,
@@ -16,7 +15,7 @@ final class TransportTests: XCTestCase {
             buffer: buffer, http: http, store: InMemoryStore(),
             baseURL: URL(string: "https://x.test")!
         )
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
         return Transport(
             buffer: buffer, uploader: uploader,
             coalesceInterval: coalesceInterval, batchThreshold: batchThreshold
@@ -87,9 +86,10 @@ final class TransportTests: XCTestCase {
         XCTAssertEqual(buffer.count, 0)
     }
 
-    func testStartUploadsNoDeclarations() async throws {
-        // The release-day herd: an SDK added to an app with thousands of existing
-        // installs must not have every one of them upload its manifest on first run.
+    func testStartUploadsOnlyEvents() async throws {
+        // The release-day herd, settled for good: there is no second endpoint to
+        // call on start. An SDK added to an app with thousands of existing installs
+        // does nothing on launch but flush whatever is already buffered.
         let http = MockHTTPClient(status: 200)
         let buffer = InMemoryEventBuffer()
         let uploader = Uploader(
@@ -98,12 +98,12 @@ final class TransportTests: XCTestCase {
         )
         let transport = Transport(buffer: buffer, uploader: uploader)
 
-        transport.start(apiKey: "k", installID: "i", manifest: manifest)
+        transport.start(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
         try await Task.sleep(nanoseconds: 400_000_000)
 
         XCTAssertTrue(
             http.requests(matching: "v1/declarations").isEmpty,
-            "nothing is uploaded until the server asks for it"
+            "the declarations endpoint is retired"
         )
     }
 }

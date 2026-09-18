@@ -30,7 +30,6 @@ extension SM {
 
         enum Path {
             static let events = "v1/events"
-            static let declarations = "v1/declarations"
             static let erasure = "v1/erasure"
         }
     }

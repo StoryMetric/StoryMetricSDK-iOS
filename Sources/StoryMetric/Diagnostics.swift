@@ -9,8 +9,8 @@ extension SM {
     public enum LogLevel: Int, Sendable, Comparable {
         /// Silence, including integration mistakes. Rarely what you want.
         case off
-        /// The default. Integration problems only — an undeclared event, a param of
-        /// the wrong type, a rejected API key. Silent for a correct integration.
+        /// The default. Integration problems only — a rejected API key, a batch the
+        /// server refused. Silent for a correct integration.
         case error
         /// Everything above plus lifecycle and upload activity.
         case debug
@@ -45,30 +45,5 @@ enum Diag {
         guard level >= .debug else { return }
         let text = message()
         logger.notice("[StoryMetric] \(text, privacy: .public)")
-    }
-}
-
-extension SM.ValidationIssue: CustomStringConvertible {
-    var description: String {
-        switch self {
-        case .emptyEventName:
-            return "an event was declared with an empty name"
-        case .reservedEventName(let name):
-            return "`\(name)` is reserved by StoryMetric and can't be declared"
-        case .duplicateEvent(let name):
-            return "`\(name)` is declared more than once"
-        case .emptyParamId(let event):
-            return "`\(event)` has a param with an empty id"
-        case .duplicateParam(let event, let param):
-            return "`\(event)` declares param `\(param)` more than once"
-        case .undeclaredEvent(let name):
-            return "`\(name)` isn't declared — add it to your @SMEvents extension"
-        case .missingRequiredParam(let event, let param):
-            return "`\(event)` is missing required param `\(param)`"
-        case .undeclaredParam(let event, let param):
-            return "`\(event)` was sent undeclared param `\(param)`"
-        case .typeMismatch(let event, let param, let expected, let actual):
-            return "`\(event)`.`\(param)` expects \(expected.rawValue), got \(actual.rawValue)"
-        }
     }
 }

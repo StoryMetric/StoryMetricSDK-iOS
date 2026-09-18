@@ -53,13 +53,89 @@ final class PurchaseTests: XCTestCase {
         XCTAssertEqual(params["product_id"], .string("credits_100"))
     }
 
+    // MARK: Custom params
+
+    private func facts(period: String? = "annual", isTrial: Bool? = false) -> PurchaseFacts {
+        PurchaseFacts(
+            productID: "pro_annual",
+            transactionID: "2000000123",
+            originalTransactionID: "2000000123",
+            isRenewal: false,
+            price: 34.99,
+            currencyCode: "USD",
+            period: period,
+            isTrial: isTrial,
+            isSandbox: false
+        )
+    }
+
+    func testCustomParamsRideAlongsideTheTransaction() {
+        let params = facts().params(custom: [
+            "paywall_source": .string("onboarding"),
+            "experiment": .string("price_b"),
+            "days_since_install": .int(3),
+        ])
+
+        XCTAssertEqual(params["paywall_source"], .string("onboarding"))
+        XCTAssertEqual(params["experiment"], .string("price_b"))
+        XCTAssertEqual(params["days_since_install"], .int(3))
+        XCTAssertEqual(params["product_id"], .string("pro_annual"), "the built-ins still ride")
+    }
+
+    func testCustomParamsCantOverrideTheTransaction() {
+        let params = facts().params(custom: [
+            "price": .double(0),
+            "product_id": .string("free"),
+            "is_renewal": .bool(true),
+        ])
+
+        XCTAssertEqual(params["price"], .double(34.99))
+        XCTAssertEqual(params["product_id"], .string("pro_annual"))
+        XCTAssertEqual(params["is_renewal"], .bool(false))
+    }
+
+    func testReservedIDsAreDroppedEvenWhenTheTransactionHasNoValue() {
+        // A one-time purchase has no period and no trial. Their absence is a fact
+        // about the purchase, not a gap a caller may fill.
+        let params = facts(period: nil, isTrial: nil).params(custom: [
+            "period": .string("annual"),
+            "is_trial": .bool(true),
+        ])
+
+        XCTAssertNil(params["period"])
+        XCTAssertNil(params["is_trial"])
+    }
+
+    func testEveryBuiltInIDIsReserved() {
+        let custom = Dictionary(
+            uniqueKeysWithValues: SM.purchaseParamIDs.map { ($0, SM.ParamValue.string("injected")) }
+        )
+        let params = facts().params(custom: custom)
+
+        XCTAssertFalse(
+            params.values.contains(.string("injected")),
+            "purchaseParamIDs is the full built-in vocabulary — none of it is writable"
+        )
+    }
+
+    func testEmptyParamIDIsDropped() {
+        let params = facts().params(custom: ["": .string("nameless"), "kept": .int(1)])
+
+        XCTAssertNil(params[""])
+        XCTAssertEqual(params["kept"], .int(1))
+    }
+
+    func testNoCustomParamsLeavesThePayloadUnchanged() {
+        XCTAssertEqual(facts().params(custom: [:]), facts().params())
+    }
+
     // MARK: Core.recordPurchase
 
     private func startedCore(store: InMemoryStore = InMemoryStore(), sink: EventSink) -> SM.Core {
         let core = SM.Core(
             store: store, clock: ManualClock(date: t0), sink: sink, uuid: CountingUUID().next
         )
-        core.start(apiKey: "k", events: [SM.Event("opened_paywall")])
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
         return core
     }
 
@@ -74,7 +150,6 @@ final class PurchaseTests: XCTestCase {
 
         let e = sink.received.last
         XCTAssertEqual(e?.name, "purchase")
-        XCTAssertTrue(e?.flags.isEmpty == true, "purchase is reserved vocabulary, never undeclared")
     }
 
     func testPurchaseSandboxIsTransactionLevel() {
@@ -150,7 +225,7 @@ final class PurchaseTests: XCTestCase {
         let sink = ClosureSink { if $0.name == "$first_launch" { firstLaunch.fulfill() } }
 
         let core = makeSessionCore(store: InMemoryStore(), sink: sink, appOrigin: StubAppOrigin(date: origin))
-        core.start(apiKey: "k", events: [])
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         wait(for: [firstLaunch], timeout: 2)
         let fl = sink.received.first { $0.name == "$first_launch" }
@@ -163,12 +238,11 @@ final class PurchaseTests: XCTestCase {
         let sink = ClosureSink { if $0.name == "$first_launch" { firstLaunch.fulfill() } }
 
         let core = makeSessionCore(store: InMemoryStore(), sink: sink, appOrigin: StubAppOrigin(date: nil))
-        core.start(apiKey: "k", events: [])
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         wait(for: [firstLaunch], timeout: 2)
         let fl = sink.received.first { $0.name == "$first_launch" }
         XCTAssertNil(fl?.params["original_download_ts"], "unknown origin is absent, never zero")
-        XCTAssertTrue(fl?.flags.isEmpty == true)
     }
 
 #if canImport(StoreKit)
@@ -199,11 +273,11 @@ final class PurchaseTests: XCTestCase {
         // A relaunch (existing install id) records no first_launch, origin or not.
         let store = InMemoryStore()
         makeSessionCore(store: store, sink: CollectingSink(),
-                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k", events: [])
+                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         let sink2 = CollectingSink()
         makeSessionCore(store: store, sink: sink2,
-                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k", events: [])
+                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         XCTAssertFalse(sink2.received.contains { $0.name == "$first_launch" })
     }

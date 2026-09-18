@@ -37,8 +37,9 @@ extension SM {
         private struct Active {
             let apiKey: String
             let installID: String
-            let declarations: [String: Event]
-            let manifest: DeclarationManifest
+            /// The version of the Studio vocabulary this build was generated from,
+            /// stamped on every event so the server can tell which design is running.
+            let vocabularyVersion: Int
         }
 
         private var state: State = .inactive
@@ -66,30 +67,21 @@ extension SM {
         // MARK: Lifecycle
 
         /// Activates collection. Idempotent: re-starting keeps the install id.
-        func start(apiKey: String, events: [Event]) {
-            let manifest = DeclarationManifest(events: events)
-            for issue in SM.Validate.manifest(manifest) {
-                Diag.error("declaration problem: \(issue)")
-            }
+        func start(apiKey: String, vocabularyVersion: Int) {
             let (installID, isNewInstall): (String, Bool) = {
                 lock.lock()
                 defer { lock.unlock() }
                 let (id, isNew) = ensureInstallID()
-                let declarations = Dictionary(
-                    events.map { ($0.name, $0) },
-                    uniquingKeysWith: { _, latest in latest }
-                )
                 state = .active(Active(
                     apiKey: apiKey,
                     installID: id,
-                    declarations: declarations,
-                    manifest: manifest
+                    vocabularyVersion: vocabularyVersion
                 ))
                 return (id, isNew)
             }()
 
-            Diag.debug("started · \(events.count) declared event(s) · install_id \(installID)")
-            lifecycle?.start(apiKey: apiKey, installID: installID, manifest: manifest)
+            Diag.debug("started · vocabulary v\(vocabularyVersion) · install_id \(installID)")
+            lifecycle?.start(apiKey: apiKey, installID: installID, vocabularyVersion: vocabularyVersion)
 
             if let sessions {
                 startAppLifecycle()
@@ -190,22 +182,13 @@ extension SM {
 
                 guard case .active(let active) = state else { return nil }
 
-                let flags: [ValidationIssue]
-                if ReservedEvent.isReserved(name) {
-                    flags = []
-                } else if let declaration = active.declarations[name] {
-                    flags = SM.Validate.payload(params, against: declaration)
-                } else {
-                    flags = [.undeclaredEvent(name: name)]
-                }
-
                 return Envelope(
                     eventID: uuid(),
                     name: name,
                     params: params,
                     clientTS: clock.now(),
                     eventSequence: nextSequence(),
-                    declarationHash: active.manifest.declarationHash,
+                    vocabularyVersion: active.vocabularyVersion,
                     sdkVersion: SM.sdkVersion,
                     sessionID: sessionIDOverride ?? sessions?.currentSessionID,
                     isSandbox: Environment.isSandbox,
@@ -214,17 +197,13 @@ extension SM {
                     platform: Environment.platform,
                     device: Environment.device,
                     locale: Environment.locale,
-                    country: Environment.country,
-                    flags: flags
+                    country: Environment.country
                 )
             }()
 
             guard let envelope else {
                 Diag.debug("`\(name)` not recorded — SM.start(apiKey:) hasn't been called")
                 return
-            }
-            for issue in envelope.flags {
-                Diag.error("\(issue)")
             }
             sink.receive(envelope)
         }
@@ -244,7 +223,7 @@ extension SM {
                     params: params,
                     clientTS: clock.now(),
                     eventSequence: nextSequence(),
-                    declarationHash: active.manifest.declarationHash,
+                    vocabularyVersion: active.vocabularyVersion,
                     sdkVersion: SM.sdkVersion,
                     sessionID: sessions?.currentSessionID,
                     isSandbox: isSandbox,
@@ -253,8 +232,7 @@ extension SM {
                     platform: Environment.platform,
                     device: Environment.device,
                     locale: Environment.locale,
-                    country: Environment.country,
-                    flags: []
+                    country: Environment.country
                 )
             }()
 

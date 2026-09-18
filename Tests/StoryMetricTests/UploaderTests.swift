@@ -4,7 +4,6 @@ import Foundation
 
 final class UploaderTests: XCTestCase {
 
-    private let manifest = SM.DeclarationManifest(events: LoggingSampleEvents.allEvents)
 
     private func makeUploader(
         http: MockHTTPClient,
@@ -22,7 +21,7 @@ final class UploaderTests: XCTestCase {
         buffer.append(makeBufferedEvent(id: "b"))
         let http = MockHTTPClient(status: 200)
         let uploader = makeUploader(http: http, buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
 
         let outcome = await uploader.flush()
 
@@ -35,7 +34,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 503), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
 
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .retained)
@@ -48,7 +47,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 429), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .retained)
         XCTAssertEqual(buffer.count, 1)
@@ -59,7 +58,7 @@ final class UploaderTests: XCTestCase {
         buffer.append(makeBufferedEvent(id: "a"))
         let http = MockHTTPClient(responder: { _ in .failure(MockNetworkError()) })
         let uploader = makeUploader(http: http, buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .retained)
         XCTAssertEqual(buffer.count, 1)
@@ -69,7 +68,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 401), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
 
         let held = await uploader.flush()
         XCTAssertEqual(held, .held)
@@ -82,7 +81,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 400), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
 
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .dropped(1))
@@ -99,60 +98,17 @@ final class UploaderTests: XCTestCase {
 
     func testEmptyBuffer() async {
         let uploader = makeUploader(http: MockHTTPClient(status: 200))
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .empty)
     }
 
-    // MARK: manifest_unknown handshake
-
-    func testManifestUnknownReuploadsDeclarations() async {
-        let buffer = InMemoryEventBuffer()
-        buffer.append(makeBufferedEvent(id: "a"))
-        let http = MockHTTPClient(responder: { url in
-            if url.path.contains("v1/events") {
-                return .success(HTTPResponse(status: 200, body: Data(#"{"manifest_unknown":true}"#.utf8)))
-            }
-            return .success(HTTPResponse(status: 200, body: Data()))
-        })
-        let store = InMemoryStore()
-        let uploader = makeUploader(http: http, buffer: buffer, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
-
-        let outcome = await uploader.flush()
-
-        XCTAssertEqual(outcome, .sent(1), "events still accepted")
-        XCTAssertEqual(buffer.count, 0)
-        XCTAssertEqual(http.requests(matching: "v1/declarations").count, 1, "manifest re-uploaded")
-    }
-
-    func testManifestKnownUploadsNothing() async {
-        let buffer = InMemoryEventBuffer()
-        buffer.append(makeBufferedEvent(id: "a"))
-        let http = MockHTTPClient(responder: { url in
-            if url.path.contains("v1/events") {
-                return .success(HTTPResponse(status: 200, body: Data(#"{"manifest_unknown":false}"#.utf8)))
-            }
-            return .success(HTTPResponse(status: 200, body: Data()))
-        })
-        let uploader = makeUploader(http: http, buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
-
-        await uploader.flush()
-
-        XCTAssertTrue(
-            http.requests(matching: "v1/declarations").isEmpty,
-            "the server already has this manifest — the steady state is zero declaration requests"
-        )
-    }
-
     // MARK: Declarations
-
-    // Declarations now upload ONLY on a manifest_unknown handshake — see the tests
-    // above and TransportTests.testStartUploadsNoDeclarations. The upload-on-start,
-    // upload-if-hash-changed and re-upload-every-7-days paths were removed: each
-    // guessed at what the server already had, and on release day into an app with
-    // an existing user base that guess cost one write per install.
+    //
+    // Gone. Events were declared in app code and uploaded as a manifest, with a
+    // `manifest_unknown` handshake asking for a re-upload; the tests for both
+    // lived here. Studio designs the vocabulary now, and a batch carries the
+    // version it was generated from — nothing to upload, nothing to ask for.
 
     // MARK: Erasure
 
@@ -161,7 +117,7 @@ final class UploaderTests: XCTestCase {
         let store = InMemoryStore()
         store.set("inst-erase", forKey: Keys.pendingErasureID)
         let uploader = makeUploader(http: http, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
 
         await uploader.drainErasure()
 
@@ -174,7 +130,7 @@ final class UploaderTests: XCTestCase {
         let store = InMemoryStore()
         store.set("inst-erase", forKey: Keys.pendingErasureID)
         let uploader = makeUploader(http: http, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", manifest: manifest)
+        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
 
         await uploader.drainErasure()
 

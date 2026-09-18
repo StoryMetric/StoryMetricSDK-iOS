@@ -12,7 +12,7 @@ final class LoggingCoreTests: XCTestCase {
     func testValidEventFlowsToSink() {
         let sink = CollectingSink()
         let core = makeCore(sink: sink)
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         core.record(name: "used_search", params: ["query": .string("cats"), "results": .int(2)])
 
@@ -24,36 +24,21 @@ final class LoggingCoreTests: XCTestCase {
         XCTAssertEqual(e.eventSequence, 1)
         XCTAssertEqual(e.clientTS, fixedDate)
         XCTAssertEqual(e.sdkVersion, SM.sdkVersion)
-        XCTAssertEqual(
-            e.declarationHash,
-            SM.DeclarationManifest(events: LoggingSampleEvents.allEvents).declarationHash
-        )
-        XCTAssertTrue(e.flags.isEmpty)
+        XCTAssertEqual(e.vocabularyVersion, sampleVocabularyVersion)
         XCTAssertNil(e.sessionID) // deferred
     }
 
-    func testInvalidParamsAcceptedAndFlagged() {
+    // Runtime payload validation is gone: a param of the wrong type is now a
+    // compile error in the generated file, and there is no declaration table at
+    // runtime to check an event name against. The core records what it is given.
+    func testAnyEventIsRecorded() {
         let sink = CollectingSink()
         let core = makeCore(sink: sink)
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
-        core.record(name: "used_search", params: ["query": .string("cats"), "results": .string("two")])
+        core.record(name: "mystery", params: ["whatever": .string("x")])
 
-        XCTAssertEqual(sink.received.count, 1, "flagged, not dropped")
-        XCTAssertEqual(
-            sink.received[0].flags,
-            [.typeMismatch(event: "used_search", param: "results", expected: .int, actual: .string)]
-        )
-    }
-
-    func testUndeclaredEventAcceptedAndFlagged() {
-        let sink = CollectingSink()
-        let core = makeCore(sink: sink)
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
-
-        core.record(name: "mystery", params: [:])
-
-        XCTAssertEqual(sink.received.count, 1, "accepted, never dropped")
-        XCTAssertEqual(sink.received[0].flags, [.undeclaredEvent(name: "mystery")])
+        XCTAssertEqual(sink.received.count, 1)
+        XCTAssertEqual(sink.received[0].name, "mystery")
     }
 }

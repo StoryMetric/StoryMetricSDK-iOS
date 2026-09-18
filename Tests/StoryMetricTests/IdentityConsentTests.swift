@@ -26,7 +26,7 @@ final class IdentityConsentTests: XCTestCase {
         let store = InMemoryStore()
         let core = makeCore(store: store)
 
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         XCTAssertEqual(store.string(forKey: Keys.installID), "id-1")
     }
@@ -36,8 +36,8 @@ final class IdentityConsentTests: XCTestCase {
         let uuid = CountingUUID()
         let core = makeCore(store: store, uuid: uuid)
 
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         XCTAssertEqual(store.string(forKey: Keys.installID), "id-1", "same id, uuid() consumed once")
     }
@@ -47,7 +47,7 @@ final class IdentityConsentTests: XCTestCase {
         let sink = CollectingSink()
         let core = makeCore(store: store, sink: sink)
 
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
         core.record(name: "opened_paywall", params: [:])
         XCTAssertEqual(sink.received.count, 1)
 
@@ -65,9 +65,9 @@ final class IdentityConsentTests: XCTestCase {
         let store = InMemoryStore()
         let core = makeCore(store: store)
 
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
         core.deleteData()
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         XCTAssertEqual(store.string(forKey: Keys.installID), "id-2", "fresh id after re-consent")
     }

@@ -11,7 +11,7 @@ enum Wire {
 
     static func eventsBody(
         installID: String,
-        declarationHash: String,
+        vocabularyVersion: Int,
         sdkVersion: String,
         events: [BufferedEvent]
     ) throws -> Data {
@@ -37,23 +37,7 @@ enum Wire {
         let body: [String: Any] = [
             "sdk_version": sdkVersion,
             "install_id": installID,
-            "declaration_hash": declarationHash,
-            "events": wireEvents,
-        ]
-        return try JSONSerialization.data(withJSONObject: body)
-    }
-
-    static func declarationsBody(_ manifest: SM.DeclarationManifest) throws -> Data {
-        let wireEvents: [[String: Any]] = manifest.events.map { e in
-            [
-                "name": e.name,
-                "params": e.params.map { p in
-                    ["id": p.id, "type": p.type.rawValue, "optional": p.optional] as [String: Any]
-                },
-            ]
-        }
-        let body: [String: Any] = [
-            "declaration_hash": manifest.declarationHash,
+            "vocabulary_version": vocabularyVersion,
             "events": wireEvents,
         ]
         return try JSONSerialization.data(withJSONObject: body)
@@ -61,12 +45,5 @@ enum Wire {
 
     static func erasureBody(installID: String) throws -> Data {
         try JSONSerialization.data(withJSONObject: ["install_id": installID])
-    }
-
-    static func parseManifestUnknown(_ data: Data) -> Bool {
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return false
-        }
-        return (obj["manifest_unknown"] as? Bool) ?? false
     }
 }

@@ -12,8 +12,8 @@ extension SM {
     }
 }
 
-/// Serializes all network work: event flushes, declaration upload, and the erasure
-/// beacon. One flush at a time.
+/// Serializes all network work: event flushes and the erasure beacon. One flush
+/// at a time.
 actor Uploader {
     private let buffer: EventBuffer
     private let http: HTTPClient
@@ -25,8 +25,7 @@ actor Uploader {
 
     private var apiKey: String?
     private var installID: String?
-    private var manifest: SM.DeclarationManifest?
-    private var currentHash: String?
+    private var vocabularyVersion: Int?
     private var holdUntilRestart = false
     private var attempt = 0
 
@@ -51,16 +50,14 @@ actor Uploader {
     /// Stops event uploads, keeping the api key so the erasure beacon can still send.
     func deactivate() {
         installID = nil
-        currentHash = nil
-        manifest = nil
+        vocabularyVersion = nil
         attempt = 0
     }
 
-    func configure(apiKey: String, installID: String, manifest: SM.DeclarationManifest) {
+    func configure(apiKey: String, installID: String, vocabularyVersion: Int) {
         self.apiKey = apiKey
         self.installID = installID
-        self.manifest = manifest
-        self.currentHash = manifest.declarationHash
+        self.vocabularyVersion = vocabularyVersion
         self.holdUntilRestart = false
         self.attempt = 0
     }
@@ -69,7 +66,7 @@ actor Uploader {
 
     @discardableResult
     func flush(now: Date = Date()) async -> SM.FlushOutcome {
-        guard let apiKey, let installID, let currentHash, !holdUntilRestart else {
+        guard let apiKey, let installID, let vocabularyVersion, !holdUntilRestart else {
             return .notConfigured
         }
         let events = buffer.peek(limit: batchLimit)
@@ -78,7 +75,7 @@ actor Uploader {
         let body: Data
         do {
             body = try Wire.eventsBody(
-                installID: installID, declarationHash: currentHash,
+                installID: installID, vocabularyVersion: vocabularyVersion,
                 sdkVersion: sdkVersion, events: events
             )
         } catch {
@@ -96,12 +93,6 @@ actor Uploader {
                 buffer.remove(ids: events.map(\.eventID))
                 attempt = 0
                 Diag.debug("uploaded \(events.count) event(s)")
-                // The one trigger for a declaration upload: the server told us it
-                // does not recognize the hash this batch carried.
-                if Wire.parseManifestUnknown(resp.body), let manifest {
-                    _ = await uploadDeclarations(manifest)
-                    self.currentHash = manifest.declarationHash
-                }
                 return .sent(events.count)
             case .retry:
                 attempt += 1
@@ -121,44 +112,6 @@ actor Uploader {
             attempt += 1
             Diag.debug("upload failed (\(error.localizedDescription)) — \(events.count) event(s) retained, retrying in \(Int(pendingDelay))s")
             return .retained
-        }
-    }
-
-    // MARK: Declarations
-
-    /// Declarations upload ONLY when the server reports `manifest_unknown` on an
-    /// events batch (see `flush`). Nothing is uploaded on start, and there is no
-    /// periodic re-upload.
-    ///
-    /// The SDK used to upload on first launch whenever it had no local record, and
-    /// again unconditionally every 7 days. Both were guesses about what the server
-    /// already had, and both were wrong in the expensive direction: shipping the SDK
-    /// into an app with an existing user base made every install upload its manifest
-    /// within hours of the update — thousands of union-merge writes that were no-ops
-    /// after the first — and the 7-day rule repeated a smaller version of that
-    /// forever. The hash already rides on every events batch, so the server can just
-    /// say when it needs one, and the steady state is zero declaration requests.
-    ///
-    /// Local bookkeeping went with it. A record of what this device last uploaded
-    /// only ever approximated what the server knows; the handshake is that answer,
-    /// and a failed upload simply gets asked for again on the next batch.
-    @discardableResult
-    private func uploadDeclarations(_ manifest: SM.DeclarationManifest) async -> Bool {
-        guard let apiKey else { return false }
-        do {
-            let resp = try await http.send(
-                method: "POST", url: url(SM.Config.Path.declarations),
-                headers: Wire.authHeaders(apiKey: apiKey),
-                body: try Wire.declarationsBody(manifest)
-            )
-            guard (200..<300).contains(resp.status) else {
-                Diag.error("declaration upload rejected (HTTP \(resp.status))")
-                return false
-            }
-            Diag.debug("uploaded \(manifest.events.count) declaration(s)")
-            return true
-        } catch {
-            return false
         }
     }
 

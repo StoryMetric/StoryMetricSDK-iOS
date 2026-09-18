@@ -19,22 +19,19 @@ final class CoreLifecycleTests: XCTestCase {
         let spy = SpyLifecycle()
         let core = makeCore(store: InMemoryStore(), spy: spy, sink: CollectingSink())
 
-        core.start(apiKey: "abc", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "abc", vocabularyVersion: sampleVocabularyVersion)
 
         XCTAssertEqual(spy.started.count, 1)
         XCTAssertEqual(spy.started.first?.apiKey, "abc")
         XCTAssertEqual(spy.started.first?.installID, "id-1")
-        XCTAssertEqual(
-            spy.started.first?.hash,
-            SM.DeclarationManifest(events: LoggingSampleEvents.allEvents).declarationHash
-        )
+        XCTAssertEqual(spy.started.first?.version, sampleVocabularyVersion)
     }
 
     func testDeleteDataRequestsErasure() {
         let spy = SpyLifecycle()
         let core = makeCore(store: InMemoryStore(), spy: spy, sink: CollectingSink())
 
-        core.start(apiKey: "abc", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "abc", vocabularyVersion: sampleVocabularyVersion)
         core.deleteData()
 
         XCTAssertEqual(spy.erasures, ["id-1"], "the erased install id is handed to transport")
@@ -53,7 +50,7 @@ final class CoreLifecycleTests: XCTestCase {
         let sink = CollectingSink()
         let core = makeCore(store: InMemoryStore(), spy: SpyLifecycle(), sink: sink)
 
-        core.start(apiKey: "abc", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "abc", vocabularyVersion: sampleVocabularyVersion)
         core.record(name: "opened_paywall", params: [:])
 
         XCTAssertEqual(sink.received.count, 1)

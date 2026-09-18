@@ -2,7 +2,7 @@ import Foundation
 
 /// The lifecycle side of transport, called by `Core` on start and erase.
 protocol TransportLifecycle: AnyObject, Sendable {
-    func start(apiKey: String, installID: String, manifest: SM.DeclarationManifest)
+    func start(apiKey: String, installID: String, vocabularyVersion: Int)
     func requestErasure(installID: String)
     func flush()
 }
@@ -53,11 +53,9 @@ final class Transport: EventSink, TransportLifecycle, @unchecked Sendable {
         }
     }
 
-    func start(apiKey: String, installID: String, manifest: SM.DeclarationManifest) {
+    func start(apiKey: String, installID: String, vocabularyVersion: Int) {
         Task {
-            await uploader.configure(apiKey: apiKey, installID: installID, manifest: manifest)
-            // No declaration upload here: the first events batch carries the hash,
-            // and the server asks for the manifest only if it doesn't know it.
+            await uploader.configure(apiKey: apiKey, installID: installID, vocabularyVersion: vocabularyVersion)
             await uploader.flush()
             await uploader.drainErasure()
         }

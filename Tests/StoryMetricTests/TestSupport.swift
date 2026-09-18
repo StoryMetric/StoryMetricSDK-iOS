@@ -147,7 +147,7 @@ func makeEnvelope(
     SM.Envelope(
         eventID: id, name: name, params: params,
         clientTS: Date(timeIntervalSince1970: 0), eventSequence: seq,
-        declarationHash: "hash", sdkVersion: "0.1.0"
+        vocabularyVersion: sampleVocabularyVersion, sdkVersion: "0.1.0"
     )
 }
 
@@ -157,13 +157,13 @@ func makeBufferedEvent(id: String, name: String = "opened_paywall", seq: Int = 1
 
 /// Records lifecycle calls from Core without doing any transport.
 final class SpyLifecycle: TransportLifecycle, @unchecked Sendable {
-    private(set) var started: [(apiKey: String, installID: String, hash: String)] = []
+    private(set) var started: [(apiKey: String, installID: String, version: Int)] = []
     private(set) var erasures: [String] = []
 
     private(set) var flushes = 0
 
-    func start(apiKey: String, installID: String, manifest: SM.DeclarationManifest) {
-        started.append((apiKey, installID, manifest.declarationHash))
+    func start(apiKey: String, installID: String, vocabularyVersion: Int) {
+        started.append((apiKey, installID, vocabularyVersion))
     }
     func requestErasure(installID: String) {
         erasures.append(installID)
@@ -183,14 +183,6 @@ final class ManualLifecycleObserver: AppLifecycleObserver, @unchecked Sendable {
     func fireBackground() { onBackground?() }
 }
 
-/// A hand-written declaration source used across step-2 tests.
-enum LoggingSampleEvents: SMEventSource {
-    static let allEvents: [SM.Event] = [
-        SM.Event("opened_paywall"),
-        SM.Event("used_search", params: [
-            .string("query"),
-            .int("results"),
-            .bool("from_history", optional: true),
-        ]),
-    ]
-}
+/// The vocabulary version a test build reports. Any integer will do — the SDK
+/// carries the number and holds no opinion about it.
+let sampleVocabularyVersion = 7

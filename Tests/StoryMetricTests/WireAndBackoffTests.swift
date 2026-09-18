@@ -12,12 +12,12 @@ final class WireTests: XCTestCase {
         let env = makeEnvelope(id: "e1", name: "used_search", seq: 7,
                                params: ["query": .string("cats"), "results": .int(2), "on": .bool(true)])
         let data = try Wire.eventsBody(
-            installID: "inst-1", declarationHash: "h", sdkVersion: "0.1.0",
+            installID: "inst-1", vocabularyVersion: 7, sdkVersion: "0.1.0",
             events: [BufferedEvent(env)]
         )
         let obj = json(data)
         XCTAssertEqual(obj["install_id"] as? String, "inst-1")
-        XCTAssertEqual(obj["declaration_hash"] as? String, "h")
+        XCTAssertEqual(obj["vocabulary_version"] as? Int, 7)
         XCTAssertEqual(obj["sdk_version"] as? String, "0.1.0")
 
         let events = obj["events"] as? [[String: Any]]
@@ -39,12 +39,12 @@ final class WireTests: XCTestCase {
         let full = SM.Envelope(
             eventID: "e1", name: "used_search", params: [:],
             clientTS: Date(timeIntervalSince1970: 0), eventSequence: 1,
-            declarationHash: "h", sdkVersion: "0.1.0",
+            vocabularyVersion: 7, sdkVersion: "0.1.0",
             osVersion: "18.2.0", appVersion: "3.4.1",
             platform: "ios", device: "iPhone16,2", locale: "en-US", country: "US"
         )
         let e = try XCTUnwrap((json(try Wire.eventsBody(
-            installID: "i", declarationHash: "h", sdkVersion: "0.1.0", events: [BufferedEvent(full)]
+            installID: "i", vocabularyVersion: 7, sdkVersion: "0.1.0", events: [BufferedEvent(full)]
         ))["events"] as? [[String: Any]])?.first)
         XCTAssertEqual(e["os_version"] as? String, "18.2.0")
         XCTAssertEqual(e["app_version"] as? String, "3.4.1")
@@ -55,7 +55,7 @@ final class WireTests: XCTestCase {
 
         // Absent → keys omitted (server tolerates omission).
         let bare = try XCTUnwrap((json(try Wire.eventsBody(
-            installID: "i", declarationHash: "h", sdkVersion: "0.1.0",
+            installID: "i", vocabularyVersion: 7, sdkVersion: "0.1.0",
             events: [BufferedEvent(makeEnvelope(id: "e2", name: "x"))]
         ))["events"] as? [[String: Any]])?.first)
         for key in ["platform", "device", "locale", "country"] {
@@ -63,29 +63,8 @@ final class WireTests: XCTestCase {
         }
     }
 
-    func testDeclarationsBodyShape() throws {
-        let manifest = SM.DeclarationManifest(events: [
-            SM.Event("used_search", params: [.string("query"), .int("results", optional: true)]),
-        ])
-        let obj = json(try Wire.declarationsBody(manifest))
-        XCTAssertEqual(obj["declaration_hash"] as? String, manifest.declarationHash)
-        let ev = try XCTUnwrap((obj["events"] as? [[String: Any]])?.first)
-        XCTAssertEqual(ev["name"] as? String, "used_search")
-        XCTAssertNil(ev["is_goal"], "declarations are pure vocabulary — no goal fields")
-        XCTAssertNil(ev["first_occurrence_only"], "occurrence policy is a Studio concern")
-        let params = ev["params"] as? [[String: Any]]
-        XCTAssertEqual(params?.count, 2)
-    }
-
     func testErasureBodyShape() throws {
         XCTAssertEqual(json(try Wire.erasureBody(installID: "inst-9"))["install_id"] as? String, "inst-9")
-    }
-
-    func testParseManifestUnknown() {
-        XCTAssertTrue(Wire.parseManifestUnknown(Data(#"{"manifest_unknown":true}"#.utf8)))
-        XCTAssertFalse(Wire.parseManifestUnknown(Data(#"{"manifest_unknown":false}"#.utf8)))
-        XCTAssertFalse(Wire.parseManifestUnknown(Data(#"{}"#.utf8)))
-        XCTAssertFalse(Wire.parseManifestUnknown(Data()))
     }
 }
 

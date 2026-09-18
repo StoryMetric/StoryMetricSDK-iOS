@@ -11,7 +11,7 @@ final class SequenceTests: XCTestCase {
         let store = InMemoryStore()
         let sink = CollectingSink()
         let core = makeCore(store: store, sink: sink)
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
 
         core.record(name: "opened_paywall", params: [:])
         core.record(name: "opened_paywall", params: [:])
@@ -25,14 +25,14 @@ final class SequenceTests: XCTestCase {
 
         let sink1 = CollectingSink()
         let core1 = makeCore(store: store, sink: sink1)
-        core1.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core1.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
         core1.record(name: "opened_paywall", params: [:])
         XCTAssertEqual(sink1.received.map(\.eventSequence), [1])
 
         // New Core, same store — simulates a relaunch.
         let sink2 = CollectingSink()
         let core2 = makeCore(store: store, sink: sink2)
-        core2.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core2.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
         core2.record(name: "opened_paywall", params: [:])
 
         XCTAssertEqual(sink2.received.map(\.eventSequence), [2], "sequence continues across launches")
@@ -44,10 +44,10 @@ final class SequenceTests: XCTestCase {
         let sink = CollectingSink()
         let core = makeCore(store: store, sink: sink)
 
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
         core.record(name: "opened_paywall", params: [:])
         core.deleteData()
-        core.start(apiKey: "k", events: LoggingSampleEvents.allEvents)
+        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
         core.record(name: "opened_paywall", params: [:])
 
         XCTAssertEqual(sink.received.map(\.eventSequence), [1, 1], "fresh subject restarts the sequence")
