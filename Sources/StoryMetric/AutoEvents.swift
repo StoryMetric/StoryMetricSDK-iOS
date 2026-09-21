@@ -9,11 +9,3 @@ enum AutoEvent {
 
     static func isAutomatic(_ name: String) -> Bool { name.hasPrefix(prefix) }
 }
-
-enum ReservedEvent {
-    static let purchase = "purchase"
-
-    static func isReserved(_ name: String) -> Bool {
-        AutoEvent.isAutomatic(name) || name == purchase
-    }
-}

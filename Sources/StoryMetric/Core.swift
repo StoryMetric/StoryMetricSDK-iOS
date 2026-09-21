@@ -175,7 +175,15 @@ extension SM {
 
         // MARK: Record
 
-        func record(name: String, params: [String: ParamValue], sessionIDOverride: String? = nil) {
+        /// Records one event. A `transaction` makes the event's id deterministic —
+        /// the same purchase logged twice collapses at ingest — and makes the
+        /// transaction's own environment, not the build's, decide `isSandbox`.
+        func record(
+            name: String,
+            params: [String: ParamValue],
+            sessionIDOverride: String? = nil,
+            transaction: TransactionIdentity? = nil
+        ) {
             let envelope: Envelope? = {
                 lock.lock()
                 defer { lock.unlock() }
@@ -183,7 +191,9 @@ extension SM {
                 guard case .active(let active) = state else { return nil }
 
                 return Envelope(
-                    eventID: uuid(),
+                    eventID: transaction.map {
+                        Hashing.deterministicUUID("\(active.apiKey):\(name):\($0.id)")
+                    } ?? uuid(),
                     name: name,
                     params: params,
                     clientTS: clock.now(),
@@ -191,7 +201,7 @@ extension SM {
                     vocabularyVersion: active.vocabularyVersion,
                     sdkVersion: SM.sdkVersion,
                     sessionID: sessionIDOverride ?? sessions?.currentSessionID,
-                    isSandbox: Environment.isSandbox,
+                    isSandbox: transaction?.isSandbox ?? Environment.isSandbox,
                     osVersion: Environment.osVersion,
                     appVersion: Environment.appVersion,
                     platform: Environment.platform,
@@ -203,41 +213,6 @@ extension SM {
 
             guard let envelope else {
                 Diag.debug("`\(name)` not recorded — SM.start(apiKey:) hasn't been called")
-                return
-            }
-            sink.receive(envelope)
-        }
-
-        /// Records the built-in `purchase` event. Its `event_id` is derived from the
-        /// transaction, so the same purchase logged twice collapses at ingest.
-        func recordPurchase(params: [String: ParamValue], transactionID: String, isSandbox: Bool) {
-            let envelope: Envelope? = {
-                lock.lock()
-                defer { lock.unlock() }
-
-                guard case .active(let active) = state else { return nil }
-
-                return Envelope(
-                    eventID: Hashing.deterministicUUID("\(active.apiKey):\(transactionID)"),
-                    name: ReservedEvent.purchase,
-                    params: params,
-                    clientTS: clock.now(),
-                    eventSequence: nextSequence(),
-                    vocabularyVersion: active.vocabularyVersion,
-                    sdkVersion: SM.sdkVersion,
-                    sessionID: sessions?.currentSessionID,
-                    isSandbox: isSandbox,
-                    osVersion: Environment.osVersion,
-                    appVersion: Environment.appVersion,
-                    platform: Environment.platform,
-                    device: Environment.device,
-                    locale: Environment.locale,
-                    country: Environment.country
-                )
-            }()
-
-            guard let envelope else {
-                Diag.debug("purchase not recorded — SM.start(apiKey:) hasn't been called")
                 return
             }
             sink.receive(envelope)

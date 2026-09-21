@@ -2,6 +2,20 @@
 
 Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](https://semver.org), except that until `1.0` a minor bump may contain breaking changes.
 
+## 0.3.0 — 2026-09-21
+
+### Changed — breaking
+
+- **Purchases are a property, not an event.** `SM.log.purchase(_:params:)`, its `product:` overload, `SMLogSurface` and `SM.purchaseParamIDs` are gone. A purchase is now something you add to a milestone you compose yourself in Studio: give the milestone a **Purchase Product** property and the generated method takes the product at the call site — `SM.log.subscribed(product: product, transaction: transaction, paywallSource: "onboarding")`. Migration: design the milestone in Studio, regenerate, and replace the `SM.log.purchase(…)` calls with it.
+- **The name `purchase` is released.** Nothing reserves it any more, so a milestone may be called that — and an app that wants one gets an ordinary event with an ordinary payload.
+- **The fields changed with the source.** They come from the `Product` now, not the `Transaction`: `product_id`, `product_name`, `price`, `currency`, `period`, `product_type`, `is_trial`. `transaction_id`, `original_transaction_id` and `is_renewal` are no longer recorded. `price` and `currency` are the buyer's own storefront price at the moment they paid.
+- **`is_trial` means an introductory offer applied**, and is only present when a transaction was passed. A product can say it *has* an offer, never that one was used, so without a transaction the field is absent rather than `false`.
+
+### Added
+
+- `SM.productParamIDs` — the product's own vocabulary, which a milestone's other properties may not take.
+- Deterministic event ids for any milestone given a transaction: the id is derived from the app key, the event name and the transaction, so the same purchase logged twice is one instance. The event name is part of it, so one transaction can be the moment two different milestones happened.
+
 ## 0.2.0 — 2026-09-18
 
 ### Changed — breaking

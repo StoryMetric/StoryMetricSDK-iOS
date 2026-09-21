@@ -32,7 +32,7 @@ Drop the file into your app and don't edit it: change the events in Studio and r
 public extension SM {
     static let vocabularyVersion = 7
 
-    enum Log: SMLogSurface {
+    enum Log {
         /// The export finishes writing and the share sheet is presented.
         static func exportedPdf(pageCount: Int, source: String? = nil) { … }
     }
@@ -74,35 +74,42 @@ Each batch reports the vocabulary version the build was generated from, so Studi
 
 ## Purchases
 
-```swift
-SM.log.purchase(transaction)                  // StoreKit 2 Transaction
-SM.log.purchase(transaction, product: product) // adds period + is_trial
-```
+A purchase isn't an event of its own. It is a **property** you add to a milestone you
+compose yourself — "subscribed", "bought credits", "took the annual plan" — so the
+purchase and the app state around it arrive together, under a name you chose.
 
-`purchase` is built in — no declaration, and you can't shadow it with an event of your own. It captures `product_id`, `transaction_id`, `original_transaction_id`, `is_renewal`, `price`, `currency`, and with the `Product` overload the normalized subscription `period` and `is_trial`.
-
-Logging the same transaction twice collapses to one row, so you don't have to track what you've already sent.
-
-### Your own params
-
-A purchase is the moment you most want the rest of the app's state — which paywall, which experiment arm, how far in the user was. Pass it alongside:
+Add a **Purchase Product** property to the milestone in Studio, and the generated
+method takes the whole product at the call site:
 
 ```swift
-SM.log.purchase(transaction, product: product, params: [
-    "paywall_source": .string("onboarding"),
-    "experiment": .string("price_b"),
-    "days_since_install": .int(3),
-])
+SM.log.subscribed(product: product, transaction: transaction, paywallSource: "onboarding")
 ```
 
-Two things to know, because this is the one call site in the SDK that isn't declared:
+The SDK reads the product's own fields off it: `product_id`, `product_name`, `price`,
+`currency`, the normalized subscription `period`, `product_type`, and — when you pass
+the transaction — `is_trial`, meaning an introductory offer actually applied.
 
-- **Nothing checks these.** There's no `purchase` declaration to validate against, so a mistyped id becomes a new column instead of a compile error, and a param sent as `.int` on Monday and `.string` on Tuesday stays that way. Pick the set deliberately and keep it stable.
-- **The transaction wins.** Anything in `SM.purchaseParamIDs` — `product_id`, `transaction_id`, `original_transaction_id`, `is_renewal`, `price`, `currency`, `period`, `is_trial` — is the transaction's to state. Those entries are dropped and logged at `.error`. The whole vocabulary is reserved even when a transaction has no value for it: a one-time purchase has no `period`, and that absence is a fact, not a gap to fill.
+Pass the product, never its identifier. The price is the one in the **buyer's own
+storefront currency** at the moment they paid, which is not something you can look up
+afterwards; there is no product catalog to sync and nothing to reconcile later.
 
-Dedup is keyed on the transaction, not the payload. If you log the same transaction twice with different params, the two collapse to one row at ingest and only one set survives — so gather the state you want before you log, rather than logging again to add to it.
+**Pass the transaction when you have one.** It is what makes the event's id
+deterministic, so logging the same purchase twice — once from the buy flow, once from
+a `Transaction.updates` replay at next launch — collapses to one instance. It is also
+what decides whether the purchase was a sandbox one, rather than the flavour your
+build was compiled as.
 
-**Renewals are yours to decide.** The SDK stamps `is_renewal` but never filters. Renewals don't become stories, but they do cost an ingested event, and dedup can't collapse them — each renewal is a distinct transaction. Unless you want them in your data, gate your `Transaction.updates` listener on `originalID == id`, and still `finish()` every transaction.
+### What you may not restate
+
+Anything in `SM.productParamIDs` — `product_id`, `product_name`, `price`, `currency`,
+`period`, `product_type`, `is_trial` — comes from the product. A property of your own
+under one of those names is refused in Studio, and dropped and logged at `.error` if
+it reaches the SDK anyway.
+
+**Renewals are yours to decide.** The SDK never filters them. A renewal is a distinct
+transaction, so dedup can't collapse it and it will land as another instance of the
+milestone. Unless you want them in your data, gate your `Transaction.updates` listener
+on `originalID == id`, and still `finish()` every transaction.
 
 ## Deleting a user's data
 
@@ -143,5 +150,5 @@ Call `SM.start(…)` again after either mutation.
 
 ## Alpha limits
 
-- No automatic `Transaction.updates` capture yet — log purchases at the call site.
+- No automatic `Transaction.updates` capture — log purchases at the call site.
 - Uploads don't yet continue in the background after the app is suspended; they resume on next launch.
