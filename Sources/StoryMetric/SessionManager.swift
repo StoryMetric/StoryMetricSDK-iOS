@@ -30,6 +30,16 @@ final class SessionManager: @unchecked Sendable {
         return load()?.id
     }
 
+    /// The current session's foreground time — what banked, plus the segment in
+    /// flight. Backs the built-in `session` starting point; nil when no session is
+    /// open. Read, never written, so it can't disturb what `$session_end` reports.
+    func foregroundSeconds(now: Date) -> TimeInterval? {
+        lock.lock(); defer { lock.unlock() }
+        guard let session = load() else { return nil }
+        guard let fg = session.lastForegroundTS else { return session.accumulated }
+        return session.accumulated + max(0, now.timeIntervalSince(fg))
+    }
+
     /// Resumes the session when the gap since backgrounding is within the timeout,
     /// otherwise closes it and begins a new one.
     func activated(now: Date) -> [SM.AutoEmit] {

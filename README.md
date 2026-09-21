@@ -111,6 +111,38 @@ transaction, so dedup can't collapse it and it will land as another instance of 
 milestone. Unless you want them in your data, gate your `Transaction.updates` listener
 on `originalID == id`, and still `finish()` every transaction.
 
+## Screen time since
+
+Some milestones are only interesting with a duration attached: how long did someone
+actually spend in the app between starting onboarding and saving their first
+document? Add a **screen time since** property to the milestone in Studio and pick
+what it counts from.
+
+**Foreground time only.** Time with the app in the background doesn't count, which is
+the whole reason the SDK has to measure it — nothing in the event stream says when
+someone stopped looking.
+
+Two starting points need no work from you:
+
+- **Install** — every second the app has ever been in front.
+- **This session** — the current session's foreground time.
+
+For anywhere else in your app, Studio generates a marker to place:
+
+```swift
+SM.mark.onboardingStarted()
+```
+
+That records nothing and uploads nothing. It just puts a stake in this install's
+foreground time, and any milestone counting from that point measures back to it.
+
+- **Marking again restarts the clock.** The point means "from when I said".
+- **Reaching the milestone doesn't use the mark up.** A second one measures from the
+  same place and reads longer.
+- **Never marked means the property is absent** on that instance — not zero.
+- **The property fills itself**, so adding one to a milestone doesn't change the
+  generated method's signature and your existing calls keep compiling.
+
 ## Deleting a user's data
 
 ```swift

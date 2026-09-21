@@ -14,7 +14,8 @@ extension SM {
             let sessions = SessionManager(clock: clock, store: store, uuid: { UUID().uuidString })
             return Core(
                 store: store, clock: clock, sink: transport, lifecycle: transport,
-                sessions: sessions, appLifecycle: SystemLifecycleObserver(),
+                sessions: sessions, screenTime: ScreenTime(clock: clock, store: store),
+                appLifecycle: SystemLifecycleObserver(),
                 appOrigin: SystemAppOrigin()
             )
         }()
@@ -25,6 +26,7 @@ extension SM {
         private let sink: EventSink
         private let lifecycle: TransportLifecycle?
         private let sessions: SessionManager?
+        private let screenTime: ScreenTime?
         private let appLifecycle: (any AppLifecycleObserver)?
         private let appOrigin: (any AppOriginSource)?
         private let uuid: () -> String
@@ -50,6 +52,7 @@ extension SM {
             sink: EventSink = NoopSink(),
             lifecycle: TransportLifecycle? = nil,
             sessions: SessionManager? = nil,
+            screenTime: ScreenTime? = nil,
             appLifecycle: (any AppLifecycleObserver)? = nil,
             appOrigin: (any AppOriginSource)? = nil,
             uuid: @escaping () -> String = { UUID().uuidString }
@@ -59,6 +62,7 @@ extension SM {
             self.sink = sink
             self.lifecycle = lifecycle
             self.sessions = sessions
+            self.screenTime = screenTime
             self.appLifecycle = appLifecycle
             self.appOrigin = appOrigin
             self.uuid = uuid
@@ -82,6 +86,8 @@ extension SM {
 
             Diag.debug("started · vocabulary v\(vocabularyVersion) · install_id \(installID)")
             lifecycle?.start(apiKey: apiKey, installID: installID, vocabularyVersion: vocabularyVersion)
+
+            screenTime?.resumed(now: clock.now())
 
             if let sessions {
                 startAppLifecycle()
@@ -123,6 +129,7 @@ extension SM {
                 return id
             }()
             sessions?.reset()
+            screenTime?.reset()
             if let erasedID { lifecycle?.requestErasure(installID: erasedID) }
         }
 
@@ -163,14 +170,50 @@ extension SM {
         }
 
         private func handleForeground() {
+            screenTime?.resumed(now: clock.now())
             for emit in sessions?.activated(now: clock.now()) ?? [] {
                 record(name: emit.name, params: emit.params, sessionIDOverride: emit.sessionID)
             }
         }
 
         private func handleBackground() {
+            screenTime?.backgrounded(now: clock.now())
             sessions?.backgrounded(now: clock.now())
             lifecycle?.flush()
+        }
+
+        // MARK: Screen time
+
+        /// Put a starting point at this moment. A no-op before `start`, like every
+        /// other entry point: nothing is written until there is consent.
+        func mark(_ id: String) {
+            lock.lock()
+            let started = { if case .active = state { return true } else { return false } }()
+            lock.unlock()
+            guard started else {
+                Diag.debug("`\(id)` not marked — SM.start(apiKey:) hasn't been called")
+                return
+            }
+            screenTime?.mark(id, now: clock.now())
+        }
+
+        /// Foreground seconds since that starting point, or nil when it was never
+        /// marked — which is what leaves the property off the instance entirely.
+        ///
+        /// The two built-ins need no mark: `install` is the accumulator itself, and
+        /// `session` is the open session's own foreground time.
+        func screenTimeSince(_ id: String) -> TimeInterval? {
+            lock.lock()
+            let started = { if case .active = state { return true } else { return false } }()
+            lock.unlock()
+            guard started, let screenTime else { return nil }
+
+            let now = clock.now()
+            switch id {
+            case ScreenTime.Builtin.install: return screenTime.total(now: now)
+            case ScreenTime.Builtin.session: return sessions?.foregroundSeconds(now: now)
+            default: return screenTime.since(id, now: now)
+            }
         }
 
         // MARK: Record
