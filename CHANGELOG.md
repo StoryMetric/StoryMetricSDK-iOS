@@ -2,6 +2,19 @@
 
 Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](https://semver.org), except that until `1.0` a minor bump may contain breaking changes.
 
+## 0.4.0 — 2026-09-21
+
+### Added
+
+- **Screen time since a starting point.** A milestone can carry a `screen-time-since` property, which reports how long the user actually had the app in front between a named point in their journey and the moment they reached the milestone. Backgrounded time doesn't count, which is why it can't be worked out from event timestamps afterwards.
+- `SM.mark.<startingPoint>()` — generated beside `SM.log`, one method per starting point designed in Studio. Marking records nothing and uploads nothing: it puts a stake in this install's foreground time for a milestone to measure back to.
+- Two starting points need no marker at all: `install` (every second the app has ever been in front) and `session` (the current session's foreground time).
+- The property fills itself. Adding one to a milestone doesn't change the generated method's signature, so existing call sites keep compiling.
+
+Semantics, which are the same in every app: marking a point again restarts its clock, reaching a milestone doesn't consume the mark (so a second one measures from the same place and reads longer), a mark never expires, and a milestone reached with the point never marked simply omits the property rather than sending a zero.
+
+Foreground time is banked when the app goes to the background, so a hard kill loses the stretch since it last went away — undercounting, which is the safe direction. `SM.deleteData()` erases the total and every mark along with the rest of the subject.
+
 ## 0.3.0 — 2026-09-21
 
 ### Changed — breaking
