@@ -12,13 +12,13 @@ final class WireTests: XCTestCase {
         let env = makeEnvelope(id: "e1", name: "used_search", seq: 7,
                                params: ["query": .string("cats"), "results": .int(2), "on": .bool(true)])
         let data = try Wire.eventsBody(
-            installID: "inst-1", vocabularyVersion: 7, sdkVersion: "0.1.0",
-            events: [BufferedEvent(env)]
+            installID: "inst-1", sdkVersion: "0.1.0", events: [BufferedEvent(env)]
         )
         let obj = json(data)
         XCTAssertEqual(obj["install_id"] as? String, "inst-1")
-        XCTAssertEqual(obj["vocabulary_version"] as? Int, 7)
         XCTAssertEqual(obj["sdk_version"] as? String, "0.1.0")
+        XCTAssertEqual(Set(obj.keys), ["install_id", "sdk_version", "events"],
+                       "the batch carries these three and nothing else")
 
         let events = obj["events"] as? [[String: Any]]
         let e = try XCTUnwrap(events?.first)
@@ -39,12 +39,12 @@ final class WireTests: XCTestCase {
         let full = SM.Envelope(
             eventID: "e1", name: "used_search", params: [:],
             clientTS: Date(timeIntervalSince1970: 0), eventSequence: 1,
-            vocabularyVersion: 7, sdkVersion: "0.1.0",
+            sdkVersion: "0.1.0",
             osVersion: "18.2.0", appVersion: "3.4.1",
             platform: "ios", device: "iPhone16,2", locale: "en-US", country: "US"
         )
         let e = try XCTUnwrap((json(try Wire.eventsBody(
-            installID: "i", vocabularyVersion: 7, sdkVersion: "0.1.0", events: [BufferedEvent(full)]
+            installID: "i", sdkVersion: "0.1.0", events: [BufferedEvent(full)]
         ))["events"] as? [[String: Any]])?.first)
         XCTAssertEqual(e["os_version"] as? String, "18.2.0")
         XCTAssertEqual(e["app_version"] as? String, "3.4.1")
@@ -55,7 +55,7 @@ final class WireTests: XCTestCase {
 
         // Absent → keys omitted (server tolerates omission).
         let bare = try XCTUnwrap((json(try Wire.eventsBody(
-            installID: "i", vocabularyVersion: 7, sdkVersion: "0.1.0",
+            installID: "i", sdkVersion: "0.1.0",
             events: [BufferedEvent(makeEnvelope(id: "e2", name: "x"))]
         ))["events"] as? [[String: Any]])?.first)
         for key in ["platform", "device", "locale", "country"] {

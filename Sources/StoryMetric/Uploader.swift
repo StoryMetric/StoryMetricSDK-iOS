@@ -25,7 +25,6 @@ actor Uploader {
 
     private var apiKey: String?
     private var installID: String?
-    private var vocabularyVersion: Int?
     private var holdUntilRestart = false
     private var attempt = 0
 
@@ -50,14 +49,12 @@ actor Uploader {
     /// Stops event uploads, keeping the api key so the erasure beacon can still send.
     func deactivate() {
         installID = nil
-        vocabularyVersion = nil
         attempt = 0
     }
 
-    func configure(apiKey: String, installID: String, vocabularyVersion: Int) {
+    func configure(apiKey: String, installID: String) {
         self.apiKey = apiKey
         self.installID = installID
-        self.vocabularyVersion = vocabularyVersion
         self.holdUntilRestart = false
         self.attempt = 0
     }
@@ -66,7 +63,7 @@ actor Uploader {
 
     @discardableResult
     func flush(now: Date = Date()) async -> SM.FlushOutcome {
-        guard let apiKey, let installID, let vocabularyVersion, !holdUntilRestart else {
+        guard let apiKey, let installID, !holdUntilRestart else {
             return .notConfigured
         }
         let events = buffer.peek(limit: batchLimit)
@@ -75,8 +72,7 @@ actor Uploader {
         let body: Data
         do {
             body = try Wire.eventsBody(
-                installID: installID, vocabularyVersion: vocabularyVersion,
-                sdkVersion: sdkVersion, events: events
+                installID: installID, sdkVersion: sdkVersion, events: events
             )
         } catch {
             attempt += 1

@@ -174,7 +174,7 @@ final class ScreenTimeTests: XCTestCase {
         let clock = MutableClock(t0)
         let screenTime = make(store: store, clock: clock)
         let core = SM.Core(store: store, clock: clock, sink: CollectingSink(), screenTime: screenTime)
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         clock.date = t0.addingTimeInterval(120)
 
@@ -186,7 +186,7 @@ final class ScreenTimeTests: XCTestCase {
         let clock = ManualClock(date: t0)
         let screenTime = make(store: store, clock: clock)
         let core = SM.Core(store: store, clock: clock, sink: CollectingSink(), screenTime: screenTime)
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
         core.mark("onboarding_started")
 
         core.deleteData()

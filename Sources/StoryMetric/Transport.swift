@@ -2,7 +2,7 @@ import Foundation
 
 /// The lifecycle side of transport, called by `Core` on start and erase.
 protocol TransportLifecycle: AnyObject, Sendable {
-    func start(apiKey: String, installID: String, vocabularyVersion: Int)
+    func start(apiKey: String, installID: String)
     func requestErasure(installID: String)
     func flush()
 }
@@ -53,9 +53,9 @@ final class Transport: EventSink, TransportLifecycle, @unchecked Sendable {
         }
     }
 
-    func start(apiKey: String, installID: String, vocabularyVersion: Int) {
+    func start(apiKey: String, installID: String) {
         Task {
-            await uploader.configure(apiKey: apiKey, installID: installID, vocabularyVersion: vocabularyVersion)
+            await uploader.configure(apiKey: apiKey, installID: installID)
             await uploader.flush()
             await uploader.drainErasure()
         }

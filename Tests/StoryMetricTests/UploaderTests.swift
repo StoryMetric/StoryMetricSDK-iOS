@@ -21,7 +21,7 @@ final class UploaderTests: XCTestCase {
         buffer.append(makeBufferedEvent(id: "b"))
         let http = MockHTTPClient(status: 200)
         let uploader = makeUploader(http: http, buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
 
         let outcome = await uploader.flush()
 
@@ -34,7 +34,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 503), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
 
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .retained)
@@ -47,7 +47,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 429), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .retained)
         XCTAssertEqual(buffer.count, 1)
@@ -58,7 +58,7 @@ final class UploaderTests: XCTestCase {
         buffer.append(makeBufferedEvent(id: "a"))
         let http = MockHTTPClient(responder: { _ in .failure(MockNetworkError()) })
         let uploader = makeUploader(http: http, buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .retained)
         XCTAssertEqual(buffer.count, 1)
@@ -68,7 +68,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 401), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
 
         let held = await uploader.flush()
         XCTAssertEqual(held, .held)
@@ -81,7 +81,7 @@ final class UploaderTests: XCTestCase {
         let buffer = InMemoryEventBuffer()
         buffer.append(makeBufferedEvent(id: "a"))
         let uploader = makeUploader(http: MockHTTPClient(status: 400), buffer: buffer)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
 
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .dropped(1))
@@ -98,7 +98,7 @@ final class UploaderTests: XCTestCase {
 
     func testEmptyBuffer() async {
         let uploader = makeUploader(http: MockHTTPClient(status: 200))
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
         let outcome = await uploader.flush()
         XCTAssertEqual(outcome, .empty)
     }
@@ -117,7 +117,7 @@ final class UploaderTests: XCTestCase {
         let store = InMemoryStore()
         store.set("inst-erase", forKey: Keys.pendingErasureID)
         let uploader = makeUploader(http: http, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
 
         await uploader.drainErasure()
 
@@ -130,7 +130,7 @@ final class UploaderTests: XCTestCase {
         let store = InMemoryStore()
         store.set("inst-erase", forKey: Keys.pendingErasureID)
         let uploader = makeUploader(http: http, store: store)
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
 
         await uploader.drainErasure()
 

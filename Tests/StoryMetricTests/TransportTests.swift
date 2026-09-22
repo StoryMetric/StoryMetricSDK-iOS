@@ -15,7 +15,7 @@ final class TransportTests: XCTestCase {
             buffer: buffer, http: http, store: InMemoryStore(),
             baseURL: URL(string: "https://x.test")!
         )
-        await uploader.configure(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        await uploader.configure(apiKey: "k", installID: "i")
         return Transport(
             buffer: buffer, uploader: uploader,
             coalesceInterval: coalesceInterval, batchThreshold: batchThreshold
@@ -98,7 +98,7 @@ final class TransportTests: XCTestCase {
         )
         let transport = Transport(buffer: buffer, uploader: uploader)
 
-        transport.start(apiKey: "k", installID: "i", vocabularyVersion: sampleVocabularyVersion)
+        transport.start(apiKey: "k", installID: "i")
         try await Task.sleep(nanoseconds: 400_000_000)
 
         XCTAssertTrue(

@@ -12,7 +12,6 @@ extension SM {
         let clientTS: Date
         /// Monotonic per device; the ordering authority.
         let eventSequence: Int
-        let vocabularyVersion: Int
         let sdkVersion: String
 
         var sessionID: String?
@@ -30,7 +29,6 @@ extension SM {
             params: [String: ParamValue],
             clientTS: Date,
             eventSequence: Int,
-            vocabularyVersion: Int,
             sdkVersion: String,
             sessionID: String? = nil,
             isSandbox: Bool = false,
@@ -46,7 +44,6 @@ extension SM {
             self.params = params
             self.clientTS = clientTS
             self.eventSequence = eventSequence
-            self.vocabularyVersion = vocabularyVersion
             self.sdkVersion = sdkVersion
             self.sessionID = sessionID
             self.isSandbox = isSandbox

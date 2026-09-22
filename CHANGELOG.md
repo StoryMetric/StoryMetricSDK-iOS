@@ -2,6 +2,13 @@
 
 Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](https://semver.org), except that until `1.0` a minor bump may contain breaking changes.
 
+## 0.5.0 — 2026-09-22
+
+### Changed — breaking
+
+- **`SM.start(apiKey:)` is the SDK's own method.** It used to be declared by the file Studio generates, which meant the SDK could not be started until you had designed something, generated that file, and added it to your target — the first line every analytics SDK teaches you to write did not compile. Now the package alone is enough: add it, call `SM.start(apiKey:)`, build, and sessions and launches are reported. Milestones still come from the generated file, and adding it later changes nothing about the start call. Migration: regenerate the file in Studio. An older copy declares its own `start` and will not compile against this version.
+- **`SM._start(apiKey:vocabularyVersion:)` is gone**, along with the vocabulary version on the events batch. Nothing ever stored that number, and a bare integer could not answer what it was for: what a version contained was never recorded, and a bump was as likely to be a corrected typo as a new milestone. The batch now carries `sdk_version`, `install_id` and the events.
+
 ## 0.4.0 — 2026-09-21
 
 ### Added

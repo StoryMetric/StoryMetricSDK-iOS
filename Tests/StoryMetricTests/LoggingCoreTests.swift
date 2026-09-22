@@ -12,7 +12,7 @@ final class LoggingCoreTests: XCTestCase {
     func testValidEventFlowsToSink() {
         let sink = CollectingSink()
         let core = makeCore(sink: sink)
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         core.record(name: "used_search", params: ["query": .string("cats"), "results": .int(2)])
 
@@ -24,7 +24,6 @@ final class LoggingCoreTests: XCTestCase {
         XCTAssertEqual(e.eventSequence, 1)
         XCTAssertEqual(e.clientTS, fixedDate)
         XCTAssertEqual(e.sdkVersion, SM.sdkVersion)
-        XCTAssertEqual(e.vocabularyVersion, sampleVocabularyVersion)
         XCTAssertNil(e.sessionID) // deferred
     }
 
@@ -34,7 +33,7 @@ final class LoggingCoreTests: XCTestCase {
     func testAnyEventIsRecorded() {
         let sink = CollectingSink()
         let core = makeCore(sink: sink)
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         core.record(name: "mystery", params: ["whatever": .string("x")])
 

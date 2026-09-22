@@ -94,7 +94,7 @@ final class ProductTests: XCTestCase {
         let core = SM.Core(
             store: store, clock: ManualClock(date: t0), sink: sink, uuid: CountingUUID().next
         )
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
         return core
     }
 

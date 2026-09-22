@@ -29,7 +29,7 @@ final class AppOriginTests: XCTestCase {
         let sink = ClosureSink { if $0.name == "$first_launch" { firstLaunch.fulfill() } }
 
         let core = makeSessionCore(store: InMemoryStore(), sink: sink, appOrigin: StubAppOrigin(date: origin))
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         wait(for: [firstLaunch], timeout: 2)
         let fl = sink.received.first { $0.name == "$first_launch" }
@@ -42,7 +42,7 @@ final class AppOriginTests: XCTestCase {
         let sink = ClosureSink { if $0.name == "$first_launch" { firstLaunch.fulfill() } }
 
         let core = makeSessionCore(store: InMemoryStore(), sink: sink, appOrigin: StubAppOrigin(date: nil))
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         wait(for: [firstLaunch], timeout: 2)
         let fl = sink.received.first { $0.name == "$first_launch" }
@@ -77,11 +77,11 @@ final class AppOriginTests: XCTestCase {
         // A relaunch (existing install id) records no first_launch, origin or not.
         let store = InMemoryStore()
         makeSessionCore(store: store, sink: CollectingSink(),
-                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k")
 
         let sink2 = CollectingSink()
         makeSessionCore(store: store, sink: sink2,
-                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+                        appOrigin: StubAppOrigin(date: t0)).start(apiKey: "k")
 
         XCTAssertFalse(sink2.received.contains { $0.name == "$first_launch" })
     }

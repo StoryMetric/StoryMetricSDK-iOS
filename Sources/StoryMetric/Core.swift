@@ -39,9 +39,6 @@ extension SM {
         private struct Active {
             let apiKey: String
             let installID: String
-            /// The version of the Studio vocabulary this build was generated from,
-            /// stamped on every event so the server can tell which design is running.
-            let vocabularyVersion: Int
         }
 
         private var state: State = .inactive
@@ -71,21 +68,17 @@ extension SM {
         // MARK: Lifecycle
 
         /// Activates collection. Idempotent: re-starting keeps the install id.
-        func start(apiKey: String, vocabularyVersion: Int) {
+        func start(apiKey: String) {
             let (installID, isNewInstall): (String, Bool) = {
                 lock.lock()
                 defer { lock.unlock() }
                 let (id, isNew) = ensureInstallID()
-                state = .active(Active(
-                    apiKey: apiKey,
-                    installID: id,
-                    vocabularyVersion: vocabularyVersion
-                ))
+                state = .active(Active(apiKey: apiKey, installID: id))
                 return (id, isNew)
             }()
 
-            Diag.debug("started · vocabulary v\(vocabularyVersion) · install_id \(installID)")
-            lifecycle?.start(apiKey: apiKey, installID: installID, vocabularyVersion: vocabularyVersion)
+            Diag.debug("started · install_id \(installID)")
+            lifecycle?.start(apiKey: apiKey, installID: installID)
 
             screenTime?.resumed(now: clock.now())
 
@@ -241,7 +234,6 @@ extension SM {
                     params: params,
                     clientTS: clock.now(),
                     eventSequence: nextSequence(),
-                    vocabularyVersion: active.vocabularyVersion,
                     sdkVersion: SM.sdkVersion,
                     sessionID: sessionIDOverride ?? sessions?.currentSessionID,
                     isSandbox: transaction?.isSandbox ?? Environment.isSandbox,

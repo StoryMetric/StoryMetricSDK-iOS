@@ -147,7 +147,7 @@ func makeEnvelope(
     SM.Envelope(
         eventID: id, name: name, params: params,
         clientTS: Date(timeIntervalSince1970: 0), eventSequence: seq,
-        vocabularyVersion: sampleVocabularyVersion, sdkVersion: "0.1.0"
+        sdkVersion: "0.1.0"
     )
 }
 
@@ -157,13 +157,13 @@ func makeBufferedEvent(id: String, name: String = "opened_paywall", seq: Int = 1
 
 /// Records lifecycle calls from Core without doing any transport.
 final class SpyLifecycle: TransportLifecycle, @unchecked Sendable {
-    private(set) var started: [(apiKey: String, installID: String, version: Int)] = []
+    private(set) var started: [(apiKey: String, installID: String)] = []
     private(set) var erasures: [String] = []
 
     private(set) var flushes = 0
 
-    func start(apiKey: String, installID: String, vocabularyVersion: Int) {
-        started.append((apiKey, installID, vocabularyVersion))
+    func start(apiKey: String, installID: String) {
+        started.append((apiKey, installID))
     }
     func requestErasure(installID: String) {
         erasures.append(installID)
@@ -185,4 +185,3 @@ final class ManualLifecycleObserver: AppLifecycleObserver, @unchecked Sendable {
 
 /// The vocabulary version a test build reports. Any integer will do — the SDK
 /// carries the number and holds no opinion about it.
-let sampleVocabularyVersion = 7

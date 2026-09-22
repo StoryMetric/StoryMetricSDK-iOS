@@ -11,7 +11,6 @@ enum Wire {
 
     static func eventsBody(
         installID: String,
-        vocabularyVersion: Int,
         sdkVersion: String,
         events: [BufferedEvent]
     ) throws -> Data {
@@ -37,7 +36,6 @@ enum Wire {
         let body: [String: Any] = [
             "sdk_version": sdkVersion,
             "install_id": installID,
-            "vocabulary_version": vocabularyVersion,
             "events": wireEvents,
         ]
         return try JSONSerialization.data(withJSONObject: body)

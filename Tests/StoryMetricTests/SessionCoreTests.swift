@@ -24,7 +24,7 @@ final class SessionCoreTests: XCTestCase {
         let sink = CollectingSink()
         let core = makeCore(clock: ManualClock(date: t0), store: InMemoryStore(), sink: sink)
 
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         XCTAssertEqual(sink.received.map(\.name), ["$session_start", "$first_launch"])
         let sid = sink.received.first?.sessionID
@@ -33,18 +33,17 @@ final class SessionCoreTests: XCTestCase {
         // Envelope fields populated (this is a DEBUG test build → sandbox).
         XCTAssertTrue(sink.received.first?.isSandbox == true)
         XCTAssertNotNil(sink.received.first?.osVersion)
-        XCTAssertTrue(sink.received.allSatisfy { $0.vocabularyVersion == sampleVocabularyVersion })
     }
 
     func testFirstLaunchOnlyOncePerInstall() {
         let store = InMemoryStore()
         makeCore(clock: ManualClock(date: t0), store: store, sink: CollectingSink())
-            .start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+            .start(apiKey: "k")
 
         // Simulate a later relaunch (new Core, same store, past the session timeout).
         let sink2 = CollectingSink()
         makeCore(clock: ManualClock(date: t0.addingTimeInterval(10_000)), store: store, sink: sink2)
-            .start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+            .start(apiKey: "k")
 
         let names = sink2.received.map(\.name)
         XCTAssertFalse(names.contains("$first_launch"), "not a fresh install")
@@ -55,7 +54,7 @@ final class SessionCoreTests: XCTestCase {
     func testEventsAreStampedWithCurrentSession() {
         let sink = CollectingSink()
         let core = makeCore(clock: ManualClock(date: t0), store: InMemoryStore(), sink: sink)
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
         let sid = sink.received.first?.sessionID
 
         core.record(name: "opened_paywall", params: [:])
@@ -70,7 +69,7 @@ final class SessionCoreTests: XCTestCase {
         let observer = ManualLifecycleObserver()
         let core = makeCore(clock: ManualClock(date: t0), store: InMemoryStore(),
                             sink: CollectingSink(), appLifecycle: observer, lifecycle: spy)
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         observer.fireBackground()
 
@@ -82,7 +81,7 @@ final class SessionCoreTests: XCTestCase {
         let observer = ManualLifecycleObserver()
         let sink = CollectingSink()
         let core = makeCore(clock: clock, store: InMemoryStore(), sink: sink, appLifecycle: observer)
-        core.start(apiKey: "k", vocabularyVersion: sampleVocabularyVersion)
+        core.start(apiKey: "k")
 
         observer.fireBackground()
         clock.date = t0.addingTimeInterval(2000)   // past the timeout
