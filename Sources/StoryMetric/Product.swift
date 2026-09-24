@@ -108,14 +108,16 @@ extension SM {
     public static func _record(
         _ name: String,
         params: [String: ParamValue],
-        transaction: Transaction?
+        transaction: Transaction?,
+        config: String? = nil
     ) {
         Core.shared.record(
             name: name,
             params: params,
             transaction: transaction.map {
                 TransactionIdentity(id: String($0.id), isSandbox: $0.environment != .production)
-            }
+            },
+            configID: config
         )
     }
 }

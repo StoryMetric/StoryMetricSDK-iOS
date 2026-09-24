@@ -31,6 +31,7 @@ enum Wire {
             if let dev = e.device { d["device"] = dev }
             if let l = e.locale { d["locale"] = l }
             if let c = e.country { d["country"] = c }
+            if let cfg = e.configID { d["config_id"] = cfg }
             return d
         }
         let body: [String: Any] = [

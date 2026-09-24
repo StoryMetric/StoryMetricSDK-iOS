@@ -2,6 +2,12 @@
 
 Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](https://semver.org), except that until `1.0` a minor bump may contain breaking changes.
 
+## 0.6.0 — 2026-09-24
+
+### Added
+
+- **Events carry the configuration they were generated from.** Every call the Studio-generated file makes now passes the file's configuration id, and the SDK sends it with the event as `config_id`. Studio uses it to tell when a build with the latest design has reported in, which is what clears "Waiting for signals" in its Settings. Automatic events don't carry one. Migration: none needed. Files generated before this version still compile, since the new `config:` argument defaults to nil. Regenerate to start sending the id.
+
 ## 0.5.0 — 2026-09-22
 
 ### Changed — breaking

@@ -22,6 +22,8 @@ extension SM {
         var device: String?
         var locale: String?
         var country: String?
+        /// The generated file's configuration id; nil for automatic events.
+        var configID: String?
 
         init(
             eventID: String,
@@ -37,7 +39,8 @@ extension SM {
             platform: String? = nil,
             device: String? = nil,
             locale: String? = nil,
-            country: String? = nil
+            country: String? = nil,
+            configID: String? = nil
         ) {
             self.eventID = eventID
             self.name = name
@@ -53,6 +56,7 @@ extension SM {
             self.device = device
             self.locale = locale
             self.country = country
+            self.configID = configID
         }
     }
 }

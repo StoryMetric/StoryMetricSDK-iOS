@@ -41,7 +41,8 @@ final class WireTests: XCTestCase {
             clientTS: Date(timeIntervalSince1970: 0), eventSequence: 1,
             sdkVersion: "0.1.0",
             osVersion: "18.2.0", appVersion: "3.4.1",
-            platform: "ios", device: "iPhone16,2", locale: "en-US", country: "US"
+            platform: "ios", device: "iPhone16,2", locale: "en-US", country: "US",
+            configID: "a1b2c3d4e5f6"
         )
         let e = try XCTUnwrap((json(try Wire.eventsBody(
             installID: "i", sdkVersion: "0.1.0", events: [BufferedEvent(full)]
@@ -52,13 +53,14 @@ final class WireTests: XCTestCase {
         XCTAssertEqual(e["device"] as? String, "iPhone16,2")
         XCTAssertEqual(e["locale"] as? String, "en-US")
         XCTAssertEqual(e["country"] as? String, "US")
+        XCTAssertEqual(e["config_id"] as? String, "a1b2c3d4e5f6")
 
         // Absent → keys omitted (server tolerates omission).
         let bare = try XCTUnwrap((json(try Wire.eventsBody(
             installID: "i", sdkVersion: "0.1.0",
             events: [BufferedEvent(makeEnvelope(id: "e2", name: "x"))]
         ))["events"] as? [[String: Any]])?.first)
-        for key in ["platform", "device", "locale", "country"] {
+        for key in ["platform", "device", "locale", "country", "config_id"] {
             XCTAssertNil(bare[key], "\(key) omitted when nil")
         }
     }

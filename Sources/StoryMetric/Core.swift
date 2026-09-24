@@ -218,7 +218,8 @@ extension SM {
             name: String,
             params: [String: ParamValue],
             sessionIDOverride: String? = nil,
-            transaction: TransactionIdentity? = nil
+            transaction: TransactionIdentity? = nil,
+            configID: String? = nil
         ) {
             let envelope: Envelope? = {
                 lock.lock()
@@ -242,7 +243,8 @@ extension SM {
                     platform: Environment.platform,
                     device: Environment.device,
                     locale: Environment.locale,
-                    country: Environment.country
+                    country: Environment.country,
+                    configID: configID
                 )
             }()
 

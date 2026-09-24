@@ -20,8 +20,12 @@ extension SM {
     // MARK: SPI for Studio-generated code
 
     /// Not for direct use — backs the generated `SM.log.<event>()` methods.
-    public static func _record(_ name: String, params: [String: ParamValue]) {
-        Core.shared.record(name: name, params: params)
+    ///
+    /// `config` is the id of the configuration the generated file was cut from. It
+    /// rides on the event so Studio can tell a build with the latest design has
+    /// reported in.
+    public static func _record(_ name: String, params: [String: ParamValue], config: String? = nil) {
+        Core.shared.record(name: name, params: params, configID: config)
     }
 
     /// Not for direct use — backs the generated `SM.mark.<startingPoint>()` methods.

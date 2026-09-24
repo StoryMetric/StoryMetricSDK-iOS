@@ -25,6 +25,18 @@ final class LoggingCoreTests: XCTestCase {
         XCTAssertEqual(e.clientTS, fixedDate)
         XCTAssertEqual(e.sdkVersion, SM.sdkVersion)
         XCTAssertNil(e.sessionID) // deferred
+        XCTAssertNil(e.configID)
+    }
+
+    func testConfigurationIdRidesOnTheEvent() {
+        let sink = CollectingSink()
+        let core = makeCore(sink: sink)
+        core.start(apiKey: "k")
+
+        core.record(name: "used_search", params: [:], configID: "a1b2c3d4e5f6")
+
+        XCTAssertEqual(sink.received.first?.configID, "a1b2c3d4e5f6")
+        XCTAssertEqual(BufferedEvent(sink.received[0]).configID, "a1b2c3d4e5f6")
     }
 
     // Runtime payload validation is gone: a param of the wrong type is now a

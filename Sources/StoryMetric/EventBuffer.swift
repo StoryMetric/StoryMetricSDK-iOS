@@ -15,6 +15,8 @@ struct BufferedEvent: Codable, Sendable, Equatable {
     let device: String?
     let locale: String?
     let country: String?
+    /// Optional, so events persisted by an older build still decode.
+    let configID: String?
 
     init(_ e: SM.Envelope) {
         eventID = e.eventID
@@ -30,6 +32,7 @@ struct BufferedEvent: Codable, Sendable, Equatable {
         device = e.device
         locale = e.locale
         country = e.country
+        configID = e.configID
     }
 }
 
