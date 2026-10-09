@@ -2,6 +2,12 @@
 
 Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](https://semver.org), except that until `1.0` a minor bump may contain breaking changes.
 
+## 0.7.0 — 2026-10-09
+
+### Added
+
+- **A purchase is an event logged with a transaction.** When the generated method of an event with a Purchase Product property is given a transaction, the event now sends its id as `transaction_id`. Studio counts only those events as purchases: buyers, revenue and products in the App Overview. An event logged with `nil`, such as a paywall view, still records its product but is never counted as a sale. `transaction_id` joins `SM.productParamIDs`. Migration: none in code. Events logged by earlier versions carry no `transaction_id`, so they don't count as purchases.
+
 ## 0.6.0 — 2026-09-24
 
 ### Added

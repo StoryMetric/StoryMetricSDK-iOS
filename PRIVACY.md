@@ -25,7 +25,7 @@ are the same:
 
 - **User ID** — the `install_id` rides every event. It's an SDK-assigned account-level id, so it's *User ID*, not *Device ID* (which App Store Connect reserves for device-level identifiers like the IDFV/IDFA — StoryMetric reads neither). "App Functionality" is listed alongside Analytics because the id also backs idempotency and the erasure beacon.
 - **Product Interaction** — automatic events (`$first_launch`, `$session_start`/`$session_end`) plus your declared custom events.
-- **Purchase History** — the built-in `purchase` capture: `product_id`, `price`, `currency`, `period`, `is_trial`, `is_renewal`, and the transaction ids. Only present if you call `SM.log.purchase(_:)`; if your app never captures purchases, you may drop this row.
+- **Purchase History** — the fields of a Purchase Product property: `product_id`, `product_name`, `price`, `currency`, `period`, `product_type`, `is_trial`, and `transaction_id` when a transaction is passed. Only present if one of your events carries that property; if none does, you may drop this row.
 
 ## Environment context (adds no label row)
 

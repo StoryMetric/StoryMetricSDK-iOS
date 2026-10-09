@@ -1,5 +1,5 @@
 /// StoryMetric's public namespace.
 public enum SM {
     /// SDK version, stamped on every event.
-    public static let sdkVersion = "0.6.0"
+    public static let sdkVersion = "0.7.0"
 }

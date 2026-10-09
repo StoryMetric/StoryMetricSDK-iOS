@@ -86,23 +86,31 @@ SM.log.subscribed(product: product, transaction: transaction, paywallSource: "on
 ```
 
 The SDK reads the product's own fields off it: `product_id`, `product_name`, `price`,
-`currency`, the normalized subscription `period`, `product_type`, and — when you pass
-the transaction — `is_trial`, meaning an introductory offer actually applied.
+`currency`, the normalized subscription `period` and `product_type`. The price is the
+one in the **buyer's own storefront currency** at that moment, which can't be looked
+up afterwards; there is no product catalog to sync and nothing to reconcile later.
 
-Pass the product, never its identifier. The price is the one in the **buyer's own
-storefront currency** at the moment they paid, which is not something you can look up
-afterwards; there is no product catalog to sync and nothing to reconcile later.
+**The transaction says it was a purchase.** A product can be shown or chosen without
+anyone paying for it, so the same property fits "viewed paywall" as well as
+"subscribed". Pass the transaction when the event marks a completed purchase, and
+`nil` when it doesn't:
 
-**Pass the transaction when you have one.** It is what makes the event's id
-deterministic, so logging the same purchase twice — once from the buy flow, once from
-a `Transaction.updates` replay at next launch — collapses to one instance. It is also
-what decides whether the purchase was a sandbox one, rather than the flavour your
-build was compiled as.
+- With a transaction, the event sends `transaction_id`, and Studio counts it as a
+  purchase: buyers, revenue and products in the App Overview. Without one, the event
+  still records which product it was about, but is never counted as a sale.
+- The event's id is derived from the transaction, so logging the same purchase twice
+  (once from the buy flow, once from a `Transaction.updates` replay at next launch)
+  collapses to one instance.
+- `is_trial` says whether an introductory offer applied, which only the transaction
+  knows.
+- The transaction's environment decides whether the purchase was a sandbox one,
+  rather than the flavour your build was compiled as.
 
 ### What you may not restate
 
 Anything in `SM.productParamIDs` — `product_id`, `product_name`, `price`, `currency`,
-`period`, `product_type`, `is_trial` — comes from the product. A property of your own
+`period`, `product_type`, `is_trial`, `transaction_id` — comes from the product and its
+transaction. A property of your own
 under one of those names is refused in Studio, and dropped and logged at `.error` if
 it reaches the SDK anyway.
 

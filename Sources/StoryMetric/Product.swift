@@ -2,7 +2,8 @@ import Foundation
 
 extension SM {
 
-    /// The param ids a purchase-product property fills. A milestone that carries one
+    /// The param ids a purchase-product property fills, from the product and, when
+    /// one is passed, its transaction. A milestone that carries one
     /// may not also design a property under any of these names — Studio refuses it,
     /// and so does the write behind the milestone form.
     ///
@@ -17,6 +18,7 @@ extension SM {
         "period",
         "product_type",
         "is_trial",
+        "transaction_id",
     ]
 }
 
@@ -31,8 +33,8 @@ struct TransactionIdentity {
     let isSandbox: Bool
 }
 
-/// What the SDK reads off a StoreKit product. Held apart from StoreKit so it can be
-/// built and tested without one.
+/// What the SDK reads off a StoreKit product and its transaction. Held apart from
+/// StoreKit so it can be built and tested without one.
 struct ProductFacts {
     let productID: String
     let displayName: String
@@ -45,6 +47,9 @@ struct ProductFacts {
     /// never that one applied. Absence is a fact, and a wrong `false` is worse than
     /// a missing key.
     let isTrial: Bool?
+    /// Present only when a transaction was passed, which is what marks the firing as a
+    /// purchase rather than a product shown or chosen.
+    let transactionID: String?
 
     /// The product's fields, over any params the caller passed. The product is the
     /// source of truth: a caller can add to the payload but never restate it.
@@ -57,6 +62,7 @@ struct ProductFacts {
         if let currencyCode { params["currency"] = .string(currencyCode) }
         if let period { params["period"] = .string(period) }
         if let isTrial { params["is_trial"] = .bool(isTrial) }
+        if let transactionID { params["transaction_id"] = .string(transactionID) }
         return params
     }
 
@@ -137,7 +143,8 @@ extension ProductFacts {
             currencyCode: product.priceFormatStyle.currencyCode,
             period: product.subscription.map { ProductFacts.normalize($0.subscriptionPeriod) },
             productType: ProductFacts.normalize(product.type),
-            isTrial: isTrial
+            isTrial: isTrial,
+            transactionID: transaction.map { String($0.id) }
         )
     }
 

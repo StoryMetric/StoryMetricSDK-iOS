@@ -13,7 +13,8 @@ final class ProductTests: XCTestCase {
     private func facts(
         period: String? = "annual",
         isTrial: Bool? = false,
-        type: String = "auto_renewable"
+        type: String = "auto_renewable",
+        transactionID: String? = "2000000123"
     ) -> ProductFacts {
         ProductFacts(
             productID: "pro_annual",
@@ -22,7 +23,8 @@ final class ProductTests: XCTestCase {
             currencyCode: "USD",
             period: period,
             productType: type,
-            isTrial: isTrial
+            isTrial: isTrial,
+            transactionID: transactionID
         )
     }
 
@@ -35,7 +37,17 @@ final class ProductTests: XCTestCase {
             "period": .string("annual"),
             "product_type": .string("auto_renewable"),
             "is_trial": .bool(false),
+            "transaction_id": .string("2000000123"),
         ])
+    }
+
+    func testWithoutATransactionNothingSaysItWasAPurchase() {
+        // A product shown or chosen carries the same product fields as one bought.
+        // Only the transaction id tells them apart.
+        let params = facts(isTrial: nil, transactionID: nil).params()
+
+        XCTAssertNil(params["transaction_id"])
+        XCTAssertEqual(params["product_id"], .string("pro_annual"))
     }
 
     func testOneTimePurchaseOmitsPeriodAndTrial() {
