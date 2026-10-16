@@ -2,7 +2,7 @@ import Foundation
 
 extension SM {
     enum Config {
-        static let defaultBaseURL = URL(string: "https://ingest.storymetric.app")!
+        static let defaultBaseURL = URL(string: "https://ingest.realwake.app")!
 
         /// Env var or Info.plist key that overrides the ingest host.
         static let overrideKey = "STORYMETRIC_INGEST_URL"

@@ -2,6 +2,12 @@
 
 Notable changes to the StoryMetric SDK. Versions follow [Semantic Versioning](https://semver.org), except that until `1.0` a minor bump may contain breaking changes.
 
+## Unreleased
+
+### Changed
+
+- **Events upload to `ingest.realwake.app`.** The default ingest host moves from `ingest.storymetric.app`, which keeps serving builds made with earlier versions. Migration: none in code. If your network policy or privacy review lists the ingest host, add the new one. A `STORYMETRIC_INGEST_URL` override still wins over the default.
+
 ## 0.7.0 — 2026-10-09
 
 ### Added

@@ -11,7 +11,7 @@ final class ConfigTests: XCTestCase {
     func testDefaultHostIsPinned() {
         // Baked into every consumer binary and unchangeable for builds already
         // shipped — changing it should be deliberate, not incidental.
-        XCTAssertEqual(SM.Config.defaultBaseURL.absoluteString, "https://ingest.storymetric.app")
+        XCTAssertEqual(SM.Config.defaultBaseURL.absoluteString, "https://ingest.realwake.app")
     }
 
     func testEnvironmentWins() {
